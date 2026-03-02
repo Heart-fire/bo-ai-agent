@@ -1,5 +1,7 @@
 ### CUSTOM ###
 application-local.yml
+tmp/
+*.kryo
 
 HELP.md
 target/
