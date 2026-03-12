@@ -3,6 +3,18 @@ spring:
     name: bo-ai-agent
   profiles:
     active: local
+  datasource:
+    url: jdbc:postgresql://rm-cn-r9n4opvsl0001yao.rwlb.rds.aliyuncs.com/bo-ai-agent
+    username: boroot
+    password: Boroot0909
+  ai:
+    vectorstore:
+      pgvector:
+        initialize-schema: true
+        index-type: HNSW
+        dimensions: 1536
+        distance-type: COSINE_DISTANCE
+        max-document-batch-size: 10000 # Optional: Maximum number of documents per batch
 server:
     port: 8123
     servlet:
