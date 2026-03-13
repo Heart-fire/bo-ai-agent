@@ -3,6 +3,10 @@ application-local.yml
 tmp/
 *.kryo
 
+### 测试类 ###
+src/test/java/
+src/resources/document
+
 HELP.md
 target/
 .mvn/wrapper/maven-wrapper.jar

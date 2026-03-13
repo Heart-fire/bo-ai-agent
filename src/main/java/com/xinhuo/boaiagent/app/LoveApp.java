@@ -14,6 +14,7 @@ import org.springframework.ai.chat.client.advisor.vectorstore.QuestionAnswerAdvi
 import org.springframework.ai.chat.memory.ChatMemory;
 import org.springframework.ai.chat.model.ChatModel;
 import org.springframework.ai.chat.model.ChatResponse;
+import org.springframework.ai.tool.ToolCallback;
 import org.springframework.ai.vectorstore.VectorStore;
 import org.springframework.stereotype.Component;
 import reactor.core.publisher.Flux;
@@ -40,7 +41,8 @@ public class LoveApp {
     @Resource
     private VectorStore pgVectorVectorStore;
 
-
+    @Resource
+    private ToolCallback[] toolCallbacks;
     /**
      * 初始化 ChatClient
      *
@@ -162,13 +164,14 @@ public class LoveApp {
                 // 应用RAG检索增强服务 使用云知识库
 //                .advisors(loveAppRagCloudAdvisor)
                 // 应用RAG检索增强服务 使用 pgVectorVector 知识库
-                .advisors(QuestionAnswerAdvisor.builder(pgVectorVectorStore).build())
+//                .advisors(QuestionAnswerAdvisor.builder(pgVectorVectorStore).build())
 
                 // 自定义RAG检索增强服务 (文档查询器 + 上下文增强)
 //                .advisors(
 //                        LoveAppRagCustomAdvisorFactory
 //                                .createLoveAppRagCustomAdvisor(pgVectorVectorStore, "单身")
 //                )
+                .toolCallbacks(toolCallbacks)
                 .call()
                 .chatResponse();
         String content = chatResponse.getResult().getOutput().getText();
