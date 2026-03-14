@@ -65,6 +65,15 @@
             <version>9.1.0</version>
             <scope>test</scope>
         </dependency>
+        <!-- Spring AI MCP Client -->
+        <!-- spring-ai-starter-mcp-client 提供Stdio 和基于HTTP的SSE支持-->
+        <!-- Source: https://mvnrepository.com/artifact/org.springframework.ai/spring-ai-starter-mcp-client -->
+        <dependency>
+            <groupId>org.springframework.ai</groupId>
+            <artifactId>spring-ai-starter-mcp-client</artifactId>
+            <version>2.0.0-M2</version>
+            <scope>compile</scope>
+        </dependency>
         <!-- jsoup HTML 解析库 -->
         <dependency>
             <groupId>org.jsoup</groupId>

@@ -1,0 +1,7 @@
+spring:
+  application:
+    name: bo-image-search-mcp-server
+  profiles:
+    active: sse # ← SSE 模式，启动 HTTP 服务
+server:
+  port: 8127 # ← 监听 8127 端口

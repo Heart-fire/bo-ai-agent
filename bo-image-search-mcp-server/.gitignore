@@ -1,19 +1,14 @@
-### CUSTOM ###
-application-local.yml
-tmp/
-*.kryo
+HELP.md
+target/
+.mvn/wrapper/maven-wrapper.jar
+!**/src/main/**/target/
+!**/src/test/**/target/
 
 ### 测试类 ###
 src/test/java/
 src/resources/document
 src/main/resources/mcp-servers.json
 
-HELP.md
-target/
-.mvn/wrapper/maven-wrapper.jar
-!**/src/main/**/target/
-
-!**/src/test/**/target/
 ### STS ###
 .apt_generated
 .classpath

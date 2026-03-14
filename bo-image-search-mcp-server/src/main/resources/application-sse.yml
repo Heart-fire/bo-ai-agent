@@ -1,0 +1,9 @@
+spring:
+  ai:
+    mcp:
+      server:
+        name: bo-image-search-mcp-server
+        version: 0.0.1
+        type: SYNC
+        # sse 调用远程MCP不需要stdio,需要开启SSE，该模式必须手动启动服务
+        stdio: false

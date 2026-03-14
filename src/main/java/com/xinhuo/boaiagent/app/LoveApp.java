@@ -3,18 +3,17 @@ package com.xinhuo.boaiagent.app;
 import com.xinhuo.boaiagent.advisor.MyLoggerAvisor;
 import com.xinhuo.boaiagent.advisor.ReReadingAdvisor;
 import com.xinhuo.boaiagent.chatMemory.FileBasedChatMemory;
-import com.xinhuo.boaiagent.rag.LoveAppRagCustomAdvisorFactory;
 import com.xinhuo.boaiagent.rag.QueryRewriter;
 import jakarta.annotation.Resource;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.ai.chat.client.ChatClient;
 import org.springframework.ai.chat.client.advisor.MessageChatMemoryAdvisor;
 import org.springframework.ai.chat.client.advisor.api.Advisor;
-import org.springframework.ai.chat.client.advisor.vectorstore.QuestionAnswerAdvisor;
 import org.springframework.ai.chat.memory.ChatMemory;
 import org.springframework.ai.chat.model.ChatModel;
 import org.springframework.ai.chat.model.ChatResponse;
 import org.springframework.ai.tool.ToolCallback;
+import org.springframework.ai.tool.ToolCallbackProvider;
 import org.springframework.ai.vectorstore.VectorStore;
 import org.springframework.stereotype.Component;
 import reactor.core.publisher.Flux;
@@ -43,6 +42,10 @@ public class LoveApp {
 
     @Resource
     private ToolCallback[] toolCallbacks;
+
+    @Resource
+    private ToolCallbackProvider toolCallbackProvider;
+
     /**
      * 初始化 ChatClient
      *
@@ -150,7 +153,6 @@ public class LoveApp {
 //    }
 
 
-
     public String doChatWithRag(String message, String chatId) {
         // 查询重写
         String rewritermessage = queryRewriter.doQueryRewrite(message);
@@ -171,7 +173,34 @@ public class LoveApp {
 //                        LoveAppRagCustomAdvisorFactory
 //                                .createLoveAppRagCustomAdvisor(pgVectorVectorStore, "单身")
 //                )
+                // 自定义工具
                 .toolCallbacks(toolCallbacks)
+//                .toolCallbacks(toolCallbackProvider)
+                .call()
+                .chatResponse();
+        String content = chatResponse.getResult().getOutput().getText();
+        log.info("content: {}", content);
+        return content;
+    }
+
+
+    /**
+     * 调用 MCP 服务
+     * @param message
+     * @param chatId
+     * @return
+     */
+    public String doChatWithMcp(String message, String chatId) {
+        // 查询重写
+        String rewritermessage = queryRewriter.doQueryRewrite(message);
+        ChatResponse chatResponse = chatClient
+                .prompt()
+                .user(rewritermessage) // 使用查询重写后的问题
+                .user(message)
+                .advisors(spec -> spec.param(ChatMemory.CONVERSATION_ID, chatId))
+                // 开启日志，便于观察结果
+                .advisors(new MyLoggerAvisor())
+                .toolCallbacks(toolCallbackProvider)
                 .call()
                 .chatResponse();
         String content = chatResponse.getResult().getOutput().getText();

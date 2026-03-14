@@ -1,0 +1,13 @@
+spring:
+  ai:
+    mcp:
+      server:
+        name: bo-image-search-mcp-server
+        version: 0.0.1
+        type: SYNC
+        # stdio  调用本地的MCP服务需要开启 stdio
+        stdio: true
+  # stdio
+  main:
+    web-application-type: none
+    banner-mode: off
