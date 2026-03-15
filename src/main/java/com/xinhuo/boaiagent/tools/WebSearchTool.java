@@ -60,7 +60,6 @@ public class WebSearchTool {
 
             String responseBody = HttpRequest.post(BigModelConstant.WEB_SEARCH_URL)
                     .header("Authorization", "Bearer " + apiKey)
-//                    .header("Content-Type", "application/json")
                     .body(JSONUtil.toJsonStr(request))
                     .execute()
                     .body();

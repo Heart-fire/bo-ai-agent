@@ -14,40 +14,44 @@ public class FileOperationTool {
 
     private final String FILE_DIR = FileConstant.FILE_SAVE_DIR + "/file";
 
-    /**
-     * 读取文件内容
-     * @param fileName 文件名
-     * @return 文件内容
-     */
-    @Tool(description = "读取文件内容")
-    public String readFile(@ToolParam(description = "要读取的文件名") String fileName) {
+    @Tool(description = """
+        Read the content of a text file from the workspace directory.
+        Use this tool when you need to read previously saved information or intermediate results.
+        Only provide the file name, not the full path.
+        """)
+    public String readFile(
+            @ToolParam(description = "The name of the file to read, e.g. result.txt")
+            String fileName) {
+
         String filePath = FILE_DIR + "/" + fileName;
+
         try {
             return FileUtil.readUtf8String(filePath);
         } catch (Exception e) {
-            return "读取文件错误: " + e.getMessage();
+            return "Error reading file: " + e.getMessage();
         }
     }
 
-    /**
-     * 写入内容到文件
-     * @param fileName 文件名
-     * @param content 要写入的内容
-     * @return 操作结果
-     */
-    @Tool(description = "写入内容到文件")
-    public String writeFile(@ToolParam(description = "要写入的文件名") String fileName,
-                            @ToolParam(description = "要写入文件的内容") String content
+    @Tool(description = """
+        Write text content into a file in the workspace directory.
+        Use this tool to save intermediate results or final outputs.
+        """)
+    public String writeFile(
+            @ToolParam(description = "Name of the file, for example result.txt")
+            String fileName,
+
+            @ToolParam(description = "The text content to write into the file")
+            String content
     ) {
+
         String filePath = FILE_DIR + "/" + fileName;
 
         try {
-            // 创建目录
             FileUtil.mkdir(FILE_DIR);
             FileUtil.writeUtf8String(content, filePath);
-            return "写入成功的文件: " + filePath;
+            return "File written successfully to: " + filePath;
         } catch (Exception e) {
-            return "写入文件错误: " + e.getMessage();
+            return "Error writing to file: " + e.getMessage();
         }
     }
 }

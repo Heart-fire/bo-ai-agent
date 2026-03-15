@@ -10,9 +10,15 @@ import org.springframework.stereotype.Component;
 public class TerminateTool {
 
     @Tool(description = """
-            Terminate the interaction when the request is met OR if the assistant cannot proceed further with the task.
-            "When you have finished all the tasks, call this tool to end the work.
-            """)
+    End the task immediately.
+
+    Use this tool when:
+    1. The user request has been fully answered.
+    2. You cannot find more useful information.
+    3. Further searching will not help.
+
+    Always call this tool when the task is complete.
+    """)
     public String doTerminate() {
         return "任务结束";
     }
