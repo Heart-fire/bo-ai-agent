@@ -57,7 +57,7 @@ public class AiController {
      */
     @GetMapping("/manus/chat")
     public SseEmitter doChatWithManus(String message) {
-        BoManus yuManus = new BoManus(allTools, dashscopeChatModel);
-        return yuManus.runStream(message);
+        BoManus boManus = new BoManus(allTools, dashscopeChatModel);
+        return boManus.runStream(message);
     }
 }
