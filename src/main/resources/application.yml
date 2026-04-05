@@ -14,6 +14,7 @@ spring:
         max-document-batch-size: 10000 # Optional: Maximum number of documents per batch
 server:
     port: 8123
+    address: 0.0.0.0
     servlet:
       context-path: /api
 # springdoc-openapi 接口文档

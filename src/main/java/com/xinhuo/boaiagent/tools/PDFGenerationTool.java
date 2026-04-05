@@ -1,6 +1,8 @@
 package com.xinhuo.boaiagent.tools;
 
+
 import cn.hutool.core.io.FileUtil;
+import com.itextpdf.io.font.PdfEncodings;
 import com.itextpdf.kernel.font.PdfFont;
 import com.itextpdf.kernel.font.PdfFontFactory;
 import com.itextpdf.kernel.pdf.PdfDocument;
@@ -44,7 +46,8 @@ public class PDFGenerationTool {
                  PdfDocument pdf = new PdfDocument(writer);
                  Document document = new Document(pdf)) {
 
-                PdfFont font = PdfFontFactory.createFont("STSongStd-Light", "UniGB-UCS2-H");
+                // 设置字体
+                PdfFont font = PdfFontFactory.createFont("C:/Windows/Fonts/simsun.ttc,1", PdfEncodings.IDENTITY_H);
                 document.setFont(font);
 
                 Paragraph paragraph = new Paragraph(content);
@@ -52,7 +55,7 @@ public class PDFGenerationTool {
                 document.add(paragraph);
             }
 
-            return "PDF generated successfully at: " + filePath;
+            return "PDF generated successfully. Download URL: /api/ai/files/" + fileName;
 
         } catch (IOException e) {
             return "Error generating PDF: " + e.getMessage();
