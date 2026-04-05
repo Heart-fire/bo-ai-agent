@@ -6,26 +6,26 @@ const routes = [
     name: 'Home',
     component: () => import('../views/Home.vue'),
     meta: {
-      title: '首页 - AI超级智能体应用平台',
-      description: 'AI超级智能体应用平台提供AI恋爱大师和AI超级智能体服务，满足您的各种AI对话需求'
+      title: '首页 - 北京政策智能助手平台',
+      description: '北京政策智能助手平台提供政策问答和信息采集研究员服务，帮您快速了解北京最新政策'
     }
   },
   {
-    path: '/love-master',
-    name: 'LoveMaster',
-    component: () => import('../views/LoveMaster.vue'),
+    path: '/policy-chat',
+    name: 'PolicyChat',
+    component: () => import('../views/PolicyChat.vue'),
     meta: {
-      title: 'AI恋爱大师 - AI超级智能体应用平台',
-      description: 'AI恋爱大师是AI超级智能体应用平台的专业情感顾问，帮你解答各种恋爱问题，提供情感建议'
+      title: '政策问答 - 北京政策智能助手平台',
+      description: '基于RAG知识库的北京政策问答助手，快速解答社保、交通、积分落户等政策问题'
     }
   },
   {
-    path: '/super-agent',
-    name: 'SuperAgent',
-    component: () => import('../views/SuperAgent.vue'),
+    path: '/research-agent',
+    name: 'ResearchAgent',
+    component: () => import('../views/ResearchAgent.vue'),
     meta: {
-      title: 'AI超级智能体 - AI超级智能体应用平台',
-      description: 'AI超级智能体是AI超级智能体应用平台的全能助手，能解答各类专业问题，提供精准建议和解决方案'
+      title: '信息采集研究员 - 北京政策智能助手平台',
+      description: '自主采集公开信息，生成政策研究报告，支持积分落户、社保、交通等多类政策'
     }
   }
 ]
@@ -44,4 +44,4 @@ router.beforeEach((to, from, next) => {
   next()
 })
 
-export default router 
+export default router

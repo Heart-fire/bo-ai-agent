@@ -117,7 +117,7 @@ const openImage = (url) => {
   --title-color: #111827;
   --text-color: #4b5563;
   --text-muted: #9ca3af;
-  --accent-blue: #2b6fff;
+  --accent-blue: #f8d1d1;
   --accent-blue-bg: #eff6ff;
 
   background: var(--card-bg);

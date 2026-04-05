@@ -3,7 +3,7 @@
     <div class="footer-content">
       <div class="footer-section">
         <div class="footer-logo">
-          <h3>鱼皮AI超级智能体应用平台</h3>
+          <h3>北京政策智能助手平台</h3>
         </div>
         <div class="footer-links">
           <a href="#">《用户协议》</a>
@@ -29,7 +29,7 @@
     </div>
     
     <div class="footer-bottom">
-      <p>© {{ currentYear }} 鱼皮AI超级智能体应用平台 - 让AI为你服务</p>
+      <p>© {{ currentYear }} 北京政策智能助手平台 - AI 让政策更简单</p>
     </div>
   </footer>
 </template>
@@ -43,14 +43,21 @@ const currentYear = computed(() => new Date().getFullYear())
 
 <style scoped>
 .app-footer {
-  background-color: #fff;
   padding: 40px 0 20px;
-  color: #666;
-  border-top: 1px solid #eee;
+  color: #ffffff;
+  background-color: #0d0d0d;
+  background-image: url(https://cdn.bigmodel.cn/static/platform/images/footer/footer-banner-left.gif), url(https://cdn.bigmodel.cn/static/platform/images/footer/footer-banner-right.gif);
+  background-repeat: no-repeat, no-repeat;
+  background-position: -56px 90%, 104% -56%;
+  background-size: auto 68%, auto 74%;
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
   width: 100%;
   margin-top: auto;
   position: relative;
   z-index: 2;
+  box-sizing: border-box;
+  left: 0;
+  right: 0;
 }
 
 .footer-content {
@@ -60,6 +67,7 @@ const currentYear = computed(() => new Date().getFullYear())
   flex-wrap: wrap;
   justify-content: space-between;
   padding: 0 20px;
+  box-sizing: border-box;
 }
 
 .footer-section {
@@ -72,13 +80,15 @@ const currentYear = computed(() => new Date().getFullYear())
 .footer-logo h3 {
   font-size: 1.25rem;
   margin-bottom: 15px;
-  color: #333;
+  color: #ffffff;
+  font-weight: 600;
 }
 
 .footer-section h4 {
   font-size: 1rem;
   margin-bottom: 15px;
-  color: #333;
+  color: #ffffff;
+  font-weight: 600;
 }
 
 .footer-links {
@@ -88,46 +98,22 @@ const currentYear = computed(() => new Date().getFullYear())
 
 .footer-links a {
   margin-bottom: 10px;
-  color: #666;
+  color: rgba(255, 255, 255, 0.7);
   text-decoration: none;
   transition: color 0.2s;
+  font-size: 0.95rem;
 }
 
 .footer-links a:hover {
-  color: #007bff;
-}
-
-.qrcode {
-  display: flex;
-  align-items: center;
-}
-
-.qrcode-container {
-  text-align: center;
-}
-
-.qrcode-placeholder {
-  width: 90px;
-  height: 90px;
-  background-color: #f5f5f5;
-  margin: 0 auto 10px;
-  border-radius: 4px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 2rem;
-}
-
-.qrcode-placeholder:after {
-  content: '🤖';
+  color: #ffffff;
 }
 
 .footer-bottom {
   text-align: center;
   padding-top: 20px;
   margin-top: 20px;
-  border-top: 1px solid #eee;
-  color: #999;
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
+  color: rgba(255, 255, 255, 0.5);
   font-size: 0.9rem;
 }
 
@@ -136,7 +122,7 @@ const currentYear = computed(() => new Date().getFullYear())
   .footer-content {
     flex-direction: column;
   }
-  
+
   .footer-section {
     width: 100%;
     margin-bottom: 20px;
@@ -148,15 +134,15 @@ const currentYear = computed(() => new Date().getFullYear())
   .app-footer {
     padding: 30px 0 15px;
   }
-  
+
   .footer-section h4 {
     font-size: 0.95rem;
   }
-  
+
   .footer-links a {
     font-size: 0.9rem;
   }
-  
+
   .qrcode-placeholder {
     width: 80px;
     height: 80px;

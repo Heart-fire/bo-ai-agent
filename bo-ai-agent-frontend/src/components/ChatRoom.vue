@@ -5,8 +5,26 @@
       <div v-for="(msg, index) in messages" :key="index" class="message-wrapper">
         <!-- AI消息 -->
         <template v-if="!msg.isUser">
+          <!-- Agent响应（思考过程+结果） -->
+          <template v-if="msg.type === 'agent-response'">
+            <div class="message ai-message agent-message">
+              <div class="avatar ai-avatar">
+                <AiAvatarFallback :type="aiType"/>
+              </div>
+              <div class="message-bubble full-width">
+                <ThinkingProcess
+                  :steps="msg.content.steps || []"
+                  :tool-results="msg.content.toolResults || []"
+                  :summary="msg.content.summary || null"
+                  :summary-text="msg.content.summaryText || ''"
+                  :is-done="msg.content.isDone || false"
+                  :elapsed-time="msg.content.elapsedTime || 0"
+                />
+              </div>
+            </div>
+          </template>
           <!-- 结构化消息 -->
-          <template v-if="msg.isStructured">
+          <template v-else-if="msg.isStructured">
             <StructuredMessage :message="msg.content"/>
           </template>
           <!-- 普通文本消息 -->
@@ -18,9 +36,10 @@
               <div class="message-content">
                 {{ msg.content }}
                 <span v-if="connectionStatus === 'connecting' && index === messages.length - 1"
-                      class="typing-indicator">▋</span>
+                      class="typing-indicator">
+                  <span class="typing-dot"></span>
+                </span>
               </div>
-              <div class="message-time">{{ formatTime(msg.time) }}</div>
             </div>
           </div>
         </template>
@@ -29,31 +48,52 @@
         <div v-else class="message user-message" :class="[msg.type]">
           <div class="message-bubble">
             <div class="message-content">{{ msg.content }}</div>
-            <div class="message-time">{{ formatTime(msg.time) }}</div>
+<!--            <div class="message-time">{{ formatTime(msg.time) }}</div>-->
           </div>
           <div class="avatar user-avatar">
-            <div class="avatar-placeholder">我</div>
+            <div class="avatar-placeholder">😎</div>
           </div>
         </div>
       </div>
     </div>
 
-    <!-- 输入区域 -->
+    <!-- 输入区域 - DeepSeek 风格 -->
     <div class="chat-input-container">
-      <div class="chat-input">
-        <textarea
-            v-model="inputMessage"
-            @keydown="handleKeydown"
-            @input="autoResize"
-            placeholder="请输入消息..."
-            class="input-box"
-        ></textarea>
-        <button
-            @click="sendMessage"
-            :disabled="!inputMessage.trim()"
-        >
-          发送
-        </button>
+      <div class="chat-input-wrapper">
+        <div class="input-actions-left">
+<!--          <button class="icon-button" title="上传文件">-->
+<!--            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">-->
+<!--              <path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"/>-->
+<!--            </svg>-->
+<!--          </button>-->
+        </div>
+
+        <div class="input-box-wrapper">
+          <textarea
+              ref="textareaRef"
+              v-model="inputMessage"
+              @keydown="handleKeydown"
+              @input="handleInput"
+              placeholder="有问题，尽管问，Enter 发送，Shift + Enter 换行"
+              class="input-box"
+              rows="1"
+          ></textarea>
+        </div>
+
+        <div class="input-actions-right">
+          <button
+              @click="sendMessage"
+              :disabled="!inputMessage.trim()"
+              class="send-button"
+              :class="{ 'send-button-active': inputMessage.trim() }"
+              title="发送 (Enter)"
+          >
+            <img src="/向上.png" alt="发送" class="send-icon" />
+          </button>
+        </div>
+      </div>
+      <div class="input-hint">
+        <span>内容由AI生成，仅供参考</span>
       </div>
     </div>
   </div>
@@ -63,6 +103,7 @@
 import {ref, reactive, onMounted, nextTick, watch, computed} from 'vue'
 import AiAvatarFallback from './AiAvatarFallback.vue'
 import StructuredMessage from './StructuredMessage.vue'
+import ThinkingProcess from './ThinkingProcess.vue'
 
 const props = defineProps({
   messages: {
@@ -83,6 +124,7 @@ const emit = defineEmits(['send-message'])
 
 const inputMessage = ref('')
 const messagesContainer = ref(null)
+const textareaRef = ref(null)
 
 // 根据AI类型选择不同头像
 const aiAvatar = computed(() => {
@@ -97,6 +139,35 @@ const sendMessage = () => {
 
   emit('send-message', inputMessage.value)
   inputMessage.value = ''
+
+  // 重置 textarea 高度
+  nextTick(() => {
+    if (textareaRef.value) {
+      textareaRef.value.style.height = 'auto'
+    }
+  })
+}
+
+// 处理输入事件，自动调整高度
+const handleInput = () => {
+  const textarea = textareaRef.value
+  if (!textarea) return
+
+  // 重置高度以获取正确的 scrollHeight
+  textarea.style.height = 'auto'
+
+  // 计算新高度，最小 24px，最大 200px
+  const newHeight = Math.min(Math.max(textarea.scrollHeight, 24), 200)
+  textarea.style.height = newHeight + 'px'
+}
+
+// 处理键盘事件
+const handleKeydown = (e) => {
+  // Enter 发送，Shift + Enter 换行
+  if (e.key === 'Enter' && !e.shiftKey) {
+    e.preventDefault()
+    sendMessage()
+  }
 }
 
 // 格式化时间
@@ -138,7 +209,7 @@ onMounted(() => {
   --text-primary: #1a1a1a;
   --text-secondary: #6b7280;
   --text-tertiary: #9ca3af;
-  --accent-blue: #2b6fff;
+  --accent-blue: #f1e6e6;
   --accent-blue-hover: #1e5fe4;
   --border-light: #e5e7eb;
   --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.04);
@@ -161,14 +232,11 @@ onMounted(() => {
   flex: 1;
   overflow-y: auto;
   padding: 20px;
-  padding-bottom: 80px;
+  padding-bottom: 120px;
   display: flex;
   flex-direction: column;
   position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 72px;
+  inset: 0;
   scroll-behavior: smooth;
 }
 
@@ -231,6 +299,21 @@ onMounted(() => {
   margin-right: auto;
 }
 
+.agent-message {
+  width: 100%;
+  max-width: 100%;
+}
+
+.agent-message .message-bubble {
+  background: transparent;
+  border: none;
+  padding: 0;
+}
+
+.agent-message .message-bubble.full-width {
+  width: 100%;
+}
+
 /* ============================================
    头像
    ============================================ */
@@ -260,9 +343,9 @@ onMounted(() => {
   display: flex;
   align-items: center;
   justify-content: center;
-  background: linear-gradient(135deg, var(--accent-blue) 0%, #1e40af 100%);
-  color: white;
-  font-size: 14px;
+  background: linear-gradient(135deg, var(--accent-blue) 0%, #dbdeef 100%);
+  //color: white;
+  font-size: 18px;
   font-weight: 600;
 }
 
@@ -278,9 +361,23 @@ onMounted(() => {
 }
 
 .user-message .message-bubble {
-  background: linear-gradient(135deg, var(--accent-blue) 0%, #1e40af 100%);
-  color: white;
-  border-bottom-right-radius: 4px;
+  background: linear-gradient(
+      135deg,
+      #edf3fe 0%,
+      #edf3fe 40%,
+      #edf3fe 100%
+  );
+  color: #0f1115;
+  padding: 12px 18px;
+  border-radius: 20px;
+  border-bottom-right-radius: 8px;
+  font-size: 14px;
+  line-height: 1.6;
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+
+.user-message .message-bubble:hover {
+  transform: translateY(-1px);
 }
 
 .ai-message .message-bubble {
@@ -312,148 +409,190 @@ onMounted(() => {
 }
 
 /* ============================================
-   输入区域
+   输入区域 - DeepSeek / ChatGPT 风格
    ============================================ */
+
 .chat-input-container {
   position: absolute;
   bottom: 0;
   left: 0;
   right: 0;
-
   background: var(--bg-primary);
   border-top: 1px solid var(--border-light);
-
   z-index: 100;
-  height: 80px;
-
-  box-shadow: 0 -6px 24px rgba(0,0,0,0.05);
+  padding: 12px 20px 16px;
 }
 
 
-/* 输入区域布局 */
-
-.chat-input {
+/* 输入框整体 */
+.chat-input-wrapper {
   display: flex;
   align-items: center;
-  gap: 12px;
-
-  padding: 16px 20px;
-  height: 100%;
-  box-sizing: border-box;
-}
-
-
-
-/* 输入框 */
-
-.input-box {
-  flex: 1;
-
-  border: 1.5px solid var(--border-light);
-  border-radius: 14px;
-
-  padding: 12px 16px;
-
-  font-size: 15px;
-  font-family: inherit;
-
-  resize: none;
-  outline: none;
-
-  min-height: 22px;
-  max-height: 120px;
-
-  overflow-y: auto;
+  gap: 8px;
 
   background: var(--bg-secondary);
+  border: 1px solid var(--border-light);
+  border-radius: 16px;
 
-  /* 关键：明确文本颜色 */
-  color: var(--text-primary);
+  padding: 8px 12px;
 
   transition: all 0.2s ease;
 }
 
+/* focus 状态 */
+.chat-input-wrapper:focus-within {
+  border-color: var(--accent-blue);
+  background: var(--bg-primary);
+  box-shadow: 0 0 0 3px rgba(43, 111, 255, 0.08);
+}
 
-/* placeholder */
 
-.input-box::placeholder {
-  color: var(--text-tertiary);
+/* 输入框容器 */
+.input-box-wrapper {
+  flex: 1;
+  display: flex;
+}
+
+
+.input-box {
+  width: 100%;
+  border: none;
+  outline: none;
+  resize: none;
+  background: transparent;
+
+  font-size: 14px;
+  line-height: 22px;
+
+  padding: 6px 0;
+
+  max-height: 160px;
+  overflow-y: auto;
+
+  font-family: inherit;
+
+  color: var(--text-primary);
   opacity: 1;
 }
 
-
-/* focus效果 */
-
-.input-box:focus {
-  border-color: var(--accent-blue);
-  background: var(--bg-primary);
-
-  box-shadow: 0 0 0 3px rgba(43,111,255,0.12);
+.input-box::placeholder {
+  color: var(--text-tertiary);
 }
 
-
-/* 滚动条隐藏 */
-
+/* scrollbar */
 .input-box::-webkit-scrollbar {
-  width: 6px;
+  width: 4px;
 }
 
 .input-box::-webkit-scrollbar-thumb {
   background: rgba(0,0,0,0.1);
-  border-radius: 4px;
+  border-radius: 2px;
 }
 
 
+/* ============================================
+   左侧按钮
+   ============================================ */
 
-/* 发送按钮 */
+.input-actions-left {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+
+/* ============================================
+   右侧按钮
+   ============================================ */
+
+.input-actions-right {
+  display: flex;
+  align-items: center;
+}
+
+
+/* ============================================
+   发送按钮
+   ============================================ */
 
 .send-button {
-  background: var(--accent-blue);
-  color: white;
+  width: 36px;
+  height: 36px;
 
   border: none;
-  border-radius: 12px;
+  border-radius: 50%;
 
-  padding: 0 22px;
-
-  font-size: 14px;
-  font-weight: 600;
+  background: rgba(43, 111, 255, 0.1);
 
   cursor: pointer;
-
-  height: 44px;
 
   display: flex;
   align-items: center;
   justify-content: center;
 
   transition: all 0.2s ease;
+  padding: 0;
 }
 
 
-.send-button:hover {
-  background: #1f5fff;
-  transform: translateY(-1px);
-}
+/* 发送图标 */
+.send-button .send-icon {
+  width: 18px;
+  height: 18px;
+  object-fit: contain;
 
-
-.send-button:active {
-  transform: scale(0.96);
-}
-
-
-.send-button:disabled {
   opacity: 0.5;
-  cursor: not-allowed;
+  transition: all 0.2s ease;
 }
 
 
-
-/* disabled输入框 */
-
-.input-box:disabled {
-  opacity: 0.6;
+/* disabled */
+.send-button:disabled {
   cursor: not-allowed;
+  background: rgba(0,0,0,0.05);
+}
+
+.send-button:disabled .send-icon {
+  opacity: 0.3;
+}
+
+
+/* 激活 */
+.send-button-active {
+  background: var(--accent-blue);
+}
+
+.send-button-active .send-icon {
+  opacity: 1;
+}
+
+
+/* hover */
+.send-button-active:hover {
+  background: var(--accent-blue-hover);
+  transform: scale(1.08);
+}
+
+
+/* 点击 */
+.send-button:active {
+  transform: scale(0.95);
+}
+
+
+/* ============================================
+   输入提示
+   ============================================ */
+
+.input-hint {
+  display: flex;
+  justify-content: center;
+  margin-top: 8px;
+}
+
+.input-hint span {
+  font-size: 11px;
+  color: var(--text-tertiary);
 }
 
 /* ============================================
@@ -461,17 +600,28 @@ onMounted(() => {
    ============================================ */
 .typing-indicator {
   display: inline-block;
-  animation: cursorBlink 1s step-end infinite;
-  margin-left: 2px;
-  color: var(--accent-blue);
+  margin-left: 4px;
+  vertical-align: middle;
 }
 
-@keyframes cursorBlink {
-  0%, 50% {
+.typing-dot {
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  background: var(--accent-blue);
+  border-radius: 50%;
+  animation: typingPulse 1.4s ease-in-out infinite;
+  box-shadow: 0 0 8px rgb(255, 255, 255);
+}
+
+@keyframes typingPulse {
+  0%, 100% {
     opacity: 1;
+    transform: scale(1);
   }
-  51%, 100% {
-    opacity: 0;
+  50% {
+    opacity: 0.5;
+    transform: scale(0.8);
   }
 }
 
@@ -487,18 +637,16 @@ onMounted(() => {
     max-width: 90%;
   }
 
-  .chat-input {
-    padding: 12px 16px;
+  .chat-input-container {
+    padding: 10px 16px 14px;
+  }
+
+  .chat-input-wrapper {
+    padding: 6px 6px 6px 10px;
   }
 
   .input-box {
-    font-size: 16px;
-  }
-
-  .send-button {
-    padding: 0 16px;
-    font-size: 13px;
-    height: 40px;
+    font-size: 15px;
   }
 }
 
@@ -521,38 +669,30 @@ onMounted(() => {
     font-size: 14px;
   }
 
-  .chat-input-container {
-    height: 64px;
-  }
-
   .chat-messages {
-    bottom: 64px;
+    padding-bottom: 100px;
   }
 
+  .input-actions-left .icon-button,
   .send-button {
-    padding: 0 14px;
-    height: 36px;
+    width: 32px;
+    height: 32px;
   }
 
-  .input-box {
-    padding: 8px 12px;
+  .icon-button svg,
+  .send-button .send-icon {
+    width: 16px;
+    height: 16px;
+  }
+
+  .chat-input-container {
+    padding: 8px 12px 12px;
   }
 }
 
 /* ============================================
    消息类型样式
    ============================================ */
-.ai-answer {
-  animation: fadeIn 0.3s ease-in-out;
-}
-
-.ai-final {
-  border-left: 2px solid var(--accent-blue);
-}
-
-.ai-error {
-  opacity: 0.7;
-}
 
 /* ============================================
    连续消息优化
