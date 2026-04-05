@@ -21,7 +21,9 @@ import org.springframework.ai.model.tool.ToolExecutionResult;
 import org.springframework.ai.tool.ToolCallback;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.stream.Collectors;
 
 /**
@@ -35,7 +37,7 @@ public class ToolCallAgent extends ReActAgent {
     // 可用的工具
     private final ToolCallback[] availableTools;
 
-    // 保存工具调用信息的响应结果（要调用那些工具）
+    // 保存工具调用信息的响应结果（要调用哪些工具）
     private ChatResponse toolCallChatResponse;
 
     // 工具调用管理者
@@ -52,6 +54,9 @@ public class ToolCallAgent extends ReActAgent {
 
     // 保存所有步骤的原始结果
     private final List<String> rawResults = new ArrayList<>();
+
+    // 保存搜索类工具的卡片结果（用于 generateSummary）
+    private final List<SearchResultParser.DisplayCard> searchCards = new ArrayList<>();
 
     public ToolCallAgent(ToolCallback[] availableTools) {
         super();
@@ -145,9 +150,9 @@ public class ToolCallAgent extends ReActAgent {
 
         // 构建返回结果
         List<CardResult> cardResults = new ArrayList<>();
-
+        String toolName = "";
         for (ToolResponseMessage.ToolResponse response : toolResponseMessage.getResponses()) {
-            String toolName = response.name();
+            toolName = response.name();
             String toolData = response.responseData();
 
             // 记录使用的工具
@@ -159,14 +164,15 @@ public class ToolCallAgent extends ReActAgent {
             rawResults.add(toolData);
 
             // 根据工具类型解析结果
-            if ("webSearch".equals(toolName) || "webScraping".equals(toolName)) {
-                // 解析为卡片格式
+            if ("webSearch".equals(toolName) || "webSearchAdvanced".equals(toolName) || "webScraping".equals(toolName)) {
+                // 直接用正则解析搜索结果为卡片，无需额外 LLM 调用
                 List<SearchResultParser.DisplayCard> cards = SearchResultParser.parseToCards(toolData);
                 for (SearchResultParser.DisplayCard card : cards) {
                     cardResults.add(CardResult.builder()
                             .toolName(toolName)
                             .card(card)
                             .build());
+                    searchCards.add(card);
                 }
             } else if ("resourceDownload".equals(toolName)) {
                 // 下载工具：返回图片/文件信息
@@ -182,9 +188,14 @@ public class ToolCallAgent extends ReActAgent {
             log.info("工具 {} 返回的结果：{}", toolName,
                     toolData.length() > 200 ? toolData.substring(0, 200) + "..." : toolData);
         }
-
         // 返回 JSON 格式的卡片数据
-        return JSONUtil.toJsonStr(cardResults);
+//        return JSONUtil.toJsonStr(cardResults);
+        Map<String, Object> action = new HashMap<>();
+        action.put("type", "action");
+        action.put("tool", toolName);
+        action.put("data", cardResults);
+
+        return JSONUtil.toJsonStr(action);
     }
 
     /**
@@ -224,7 +235,7 @@ public class ToolCallAgent extends ReActAgent {
     }
 
     /**
-     * 生成智能总结（返回卡片列表）
+     * 生成智能总结（使用搜索类工具的卡片结果）
      *
      * @param results 所有步骤的结果
      * @return JSON 格式的总结（包含卡片列表）
@@ -232,33 +243,11 @@ public class ToolCallAgent extends ReActAgent {
     @Override
     protected String generateSummary(List<String> results) {
         try {
-            log.info("开始生成总结，原始结果数: {}, rawResults数: {}", results.size(), rawResults.size());
-
-            // 从原始结果中提取所有卡片
-            List<SearchResultParser.DisplayCard> allCards = new ArrayList<>();
-
-            for (String rawResult : rawResults.isEmpty() ? results : rawResults) {
-                try {
-                    List<SearchResultParser.DisplayCard> cards = SearchResultParser.parseToCards(rawResult);
-                    log.debug("解析到 {} 个卡片", cards.size());
-                    allCards.addAll(cards);
-                } catch (Exception e) {
-                    log.warn("解析单个结果失败: {}, 结果预览: {}", e.getMessage(),
-                            rawResult.length() > 100 ? rawResult.substring(0, 100) : rawResult);
-                }
-            }
-
-            log.info("共解析出 {} 个卡片（去重前）", allCards.size());
+            log.info("开始生成总结，搜索卡片数: {}", searchCards.size());
 
             // 去重（根据标题）
-            List<SearchResultParser.DisplayCard> uniqueCards = allCards.stream()
-                    .filter(card -> {
-                        boolean hasTitle = StrUtil.isNotBlank(card.getTitle());
-                        if (!hasTitle) {
-                            log.debug("跳过无标题的卡片");
-                        }
-                        return hasTitle;
-                    })
+            List<SearchResultParser.DisplayCard> uniqueCards = searchCards.stream()
+                    .filter(card -> StrUtil.isNotBlank(card.getTitle()))
                     .collect(java.util.stream.Collectors.toMap(
                             SearchResultParser.DisplayCard::getTitle,
                             card -> card,
@@ -285,7 +274,6 @@ public class ToolCallAgent extends ReActAgent {
 
         } catch (Exception e) {
             log.error("生成总结失败", e);
-            // 返回简单总结
             java.util.Map<String, Object> simpleSummary = new java.util.LinkedHashMap<>();
             simpleSummary.put("type", "summary");
             simpleSummary.put("conclusion", "任务已完成，共执行 " + results.size() + " 个步骤");
@@ -311,6 +299,57 @@ public class ToolCallAgent extends ReActAgent {
         } else {
             // 多个卡片，概括
             return "已为您找到 " + cards.size() + " 个相关结果";
+        }
+    }
+
+    /**
+     * 流式输出总结文本：使用 ChatClient 流式调用 LLM，逐 token 推送 SSE 事件
+     */
+    @Override
+    protected void streamSummary(org.springframework.web.servlet.mvc.method.annotation.SseEmitter emitter,
+                                  List<String> results) {
+        try {
+            // 构建上下文：从搜索卡片中提取关键信息
+            StringBuilder context = new StringBuilder();
+            for (SearchResultParser.DisplayCard card : searchCards) {
+                if (StrUtil.isNotBlank(card.getTitle())) {
+                    context.append("【").append(card.getTitle()).append("】");
+                }
+                if (StrUtil.isNotBlank(card.getDescription())) {
+                    context.append(card.getDescription());
+                }
+                context.append("\n");
+            }
+
+            if (context.isEmpty()) {
+                return;
+            }
+
+            String prompt = "请根据以下搜索到的研究信息，用简洁流畅的语言为用户做一个总结，" +
+                    "直接输出总结文字，使用对话语气，不要使用 JSON 或 markdown 格式，不要加标题：\n\n" + context;
+
+            // 使用 ChatClient 流式输出
+            getChatClient().prompt()
+                    .user(prompt)
+                    .stream()
+                    .content()
+                    .toStream()
+                    .forEach(chunk -> {
+                        if (chunk == null || chunk.isEmpty()) return;
+                        Map<String, Object> summaryChunk = Map.of(
+                                "type", "summary_stream",
+                                "content", chunk
+                        );
+                        sendSse(emitter, cn.hutool.json.JSONUtil.toJsonStr(summaryChunk));
+                    });
+
+            // 发送流式总结完成标记
+            sendSse(emitter, "{\"type\":\"summary_done\"}");
+
+        } catch (com.xinhuo.boaiagent.agent.model.SseClosedException e) {
+            throw e;
+        } catch (Exception e) {
+            log.error("流式总结生成失败", e);
         }
     }
 

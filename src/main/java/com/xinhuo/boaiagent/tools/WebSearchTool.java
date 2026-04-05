@@ -78,7 +78,7 @@ public class WebSearchTool {
     }
 
     /**
-     * 格式化搜索结果
+     * 格式化搜索结果（简洁格式，用于 LLM 总结）
      */
     private String formatSearchResult(BigModelWebSearchResponse response) {
         if (response == null || response.getSearch_result() == null || response.getSearch_result().isEmpty()) {
@@ -92,8 +92,13 @@ public class WebSearchTool {
             BigModelWebSearchResponse.SearchResult result = response.getSearch_result().get(i);
             sb.append("【").append(i + 1).append("】").append(result.getTitle()).append("\n");
             sb.append("链接：").append(result.getLink()).append("\n");
-            if (result.getContent() != null) {
-                sb.append("摘要：").append(result.getContent()).append("\n");
+            if (result.getContent() != null && !result.getContent().isEmpty()) {
+                // 限制摘要长度，避免太长
+                String content = result.getContent();
+                if (content.length() > 200) {
+                    content = content.substring(0, 200) + "...";
+                }
+                sb.append("摘要：").append(content).append("\n");
             }
             sb.append("\n");
         }

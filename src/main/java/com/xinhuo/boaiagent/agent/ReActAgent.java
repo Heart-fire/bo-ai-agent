@@ -1,11 +1,15 @@
 package com.xinhuo.boaiagent.agent;
 
-import cn.hutool.core.util.StrUtil;
 import cn.hutool.json.JSONUtil;
-import com.xinhuo.boaiagent.agent.model.StructuredMessage;
+import com.xinhuo.boaiagent.agent.model.SseClosedException;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
+
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Map;
 
 /**
  * ReAct (Reasoning and Acting) 模式的代理抽象类
@@ -30,10 +34,11 @@ public abstract class ReActAgent extends BaseAgent {
      */
     public abstract String act();
 
+
     /**
      * 执行单个步骤：思考和行动
      *
-     * @return 步骤执行结果（JSON 格式）
+     * @return 步骤执行结果（JSON 数组格式，用于 BaseAgent.runStream 解析）
      */
     @Override
     public String step() {
@@ -41,34 +46,46 @@ public abstract class ReActAgent extends BaseAgent {
             // 先思考
             boolean shouldAct = think();
 
-            // 生成思考 JSON
-            StructuredMessage stepMessage = StructuredMessage.builder()
-                    .type(StructuredMessage.MessageType.STEP)
-                    .step(StructuredMessage.StepInfo.builder()
-                            .number(getCurrentStep())
-                            .thought(getThoughtContent())
-                            .build())
-                    .build();
+            // 生成思考消息
+            Map<String,Object> thoughtData = Map.of(
+                    "step", getCurrentStep(),
+                    "content", getThoughtContent()
+            );
 
-            String stepJson = JSONUtil.toJsonStr(stepMessage);
+            Map<String,Object> thoughtMessage = Map.of(
+                    "type", "thought",
+                    "data", thoughtData
+            );
 
+            String thoughtJson = JSONUtil.toJsonStr(thoughtMessage);
+
+            // 如果不需要行动，只返回思考
             if (!shouldAct) {
-                // 只有思考，没有行动
-                return stepJson;
+                // 返回单元素数组
+                List<String> messages = new ArrayList<>();
+                messages.add(thoughtJson);
+                return JSONUtil.toJsonStr(messages);
             }
 
-            // 再行动
-            String actionResult = act();
+            // 执行动作
+            String actionJson = act(); // act() 内部要保证返回 {"type":"action","data":...}
 
-            // 组合：思考 JSON + 行动 JSON
-            // 返回一个 JSON 数组，包含两个消息
-            return "[" + stepJson + ", " + actionResult + "]";
+            // 返回两条消息的 JSON 数组
+            List<String> messages = new ArrayList<>();
+            messages.add(thoughtJson);
+            messages.add(actionJson);
+            return JSONUtil.toJsonStr(messages);
 
         } catch (Exception e) {
-            // 记录异常日志
             log.error("步骤执行失败", e);
-            StructuredMessage errorMessage = StructuredMessage.error("步骤执行失败：" + e.getMessage());
-            return JSONUtil.toJsonStr(errorMessage);
+            Map<String,Object> errorMessage = Map.of(
+                    "type", "error",
+                    "message", "步骤执行失败：" + e.getMessage()
+            );
+            // 错误也返回数组格式
+            List<String> messages = new ArrayList<>();
+            messages.add(JSONUtil.toJsonStr(errorMessage));
+            return JSONUtil.toJsonStr(messages);
         }
     }
 
@@ -79,6 +96,63 @@ public abstract class ReActAgent extends BaseAgent {
      */
     protected String getThoughtContent() {
         return "";
+    }
+
+    /**
+     * 流式执行单步：think 完成后立即推送 thought，再执行 act 推送 action
+     *
+     * @param emitter SSE 发射器，用于实时推送事件
+     * @return 步骤执行结果
+     */
+    @Override
+    public String stepStream(SseEmitter emitter) {
+        try {
+            // 1. 先思考
+            boolean shouldAct = think();
+
+            // 2. 立即推送 thought 事件（不等 act）
+            Map<String, Object> thoughtData = Map.of(
+                    "step", getCurrentStep(),
+                    "content", getThoughtContent()
+            );
+            Map<String, Object> thoughtMessage = Map.of(
+                    "type", "thought",
+                    "data", thoughtData
+            );
+            sendSse(emitter, JSONUtil.toJsonStr(thoughtMessage));
+
+            // 3. 如果不需要行动，返回 thought
+            if (!shouldAct) {
+                List<String> messages = new ArrayList<>();
+                messages.add(JSONUtil.toJsonStr(thoughtMessage));
+                return JSONUtil.toJsonStr(messages);
+            }
+
+            // 4. 执行动作
+            String actionJson = act();
+
+            // 5. 推送 action 事件
+            sendSse(emitter, actionJson);
+
+            // 返回完整结果（用于 generateSummary）
+            List<String> messages = new ArrayList<>();
+            messages.add(JSONUtil.toJsonStr(thoughtMessage));
+            messages.add(actionJson);
+            return JSONUtil.toJsonStr(messages);
+
+        } catch (SseClosedException e) {
+            throw e; // 向上传播，由 BaseAgent 统一处理
+        } catch (Exception e) {
+            log.error("步骤执行失败", e);
+            Map<String, Object> errorMessage = Map.of(
+                    "type", "error",
+                    "message", "步骤执行失败：" + e.getMessage()
+            );
+            sendSse(emitter, JSONUtil.toJsonStr(errorMessage));
+            List<String> messages = new ArrayList<>();
+            messages.add(JSONUtil.toJsonStr(errorMessage));
+            return JSONUtil.toJsonStr(messages);
+        }
     }
 
 }
