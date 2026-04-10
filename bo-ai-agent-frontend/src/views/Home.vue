@@ -71,7 +71,7 @@
       </div>
 
       <!-- 主标题 -->
-      <h1 class="hero-title">你想了解什么政策？</h1>
+      <h1 class="hero-title">政策问题，一问就懂</h1>
       <p class="hero-subtitle">精准解读税收、社保、创业、就业等各类政策，帮你快速找到答案</p>
 
       <!-- 搜索框 -->
@@ -84,7 +84,7 @@
             @input="handleInput"
             @focus="isFocused = true"
             @blur="isFocused = false"
-            placeholder="输入你的政策问题，例如：个体工商户如何享受税收减免？"
+            placeholder="输入你的问题，例如：社保缴纳比例是多少？"
             rows="1"
             class="search-textarea"
           ></textarea>
@@ -146,58 +146,66 @@
       <!-- 模式卡片 -->
       <div class="mode-cards">
         <!-- 政策问答卡片 -->
-        <button
-          class="mode-card"
-          :class="selectedMode === 'qa' ? 'card-qa-selected' : 'card-qa'"
-          @click="toggleMode('qa')"
-        >
-          <div class="card-accent-line" :class="selectedMode === 'qa' ? 'accent-qa' : 'accent-idle'"></div>
+        <button class="mode-card card-qa" @click="goToChat('qa')">
           <div class="card-top">
-            <div class="card-icon" :class="selectedMode === 'qa' ? 'icon-qa-active' : 'icon-idle'">
+            <div class="card-icon icon-qa-active">
               <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                 <path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/>
               </svg>
             </div>
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
-              class="card-arrow" :class="selectedMode === 'qa' ? 'arrow-qa-active' : 'arrow-idle'">
+              class="card-arrow arrow-qa">
               <line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/>
             </svg>
           </div>
-          <h3 class="card-title" :class="selectedMode === 'qa' ? 'title-qa-active' : 'title-idle'">⚡ 政策问答</h3>
-          <p class="card-desc" :class="selectedMode === 'qa' ? 'desc-active' : 'desc-idle'">
-            快速回答政策咨询，直接给出明确结论，适合查询具体规定
-          </p>
-          <div class="card-tags">
-            <span class="card-tag" :class="selectedMode === 'qa' ? 'tag-qa' : 'tag-idle'">即时响应</span>
-            <span class="card-tag" :class="selectedMode === 'qa' ? 'tag-qa' : 'tag-idle'">简洁明了</span>
+          <!-- 内容区：hover 时整体上移，露出底部提示 -->
+          <div class="card-body">
+            <h3 class="card-title title-qa-active">⚡ 政策问答</h3>
+            <p class="card-desc desc-active">
+              快速回答政策咨询，直接给出明确结论，适合查询具体规定
+            </p>
+            <div class="card-tags">
+              <span class="card-tag tag-qa">即时响应</span>
+              <span class="card-tag tag-qa">简洁明了</span>
+            </div>
+            <!-- 立刻体验提示：默认隐藏，hover 淡入 -->
+            <div class="card-cta cta-qa">
+              <span>立刻体验</span>
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                <line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/>
+              </svg>
+            </div>
           </div>
         </button>
 
         <!-- Agent 深度分析卡片 -->
-        <button
-          class="mode-card"
-          :class="selectedMode === 'agent' ? 'card-agent-selected' : 'card-agent'"
-          @click="toggleMode('agent')"
-        >
-          <div class="card-accent-line" :class="selectedMode === 'agent' ? 'accent-agent' : 'accent-idle'"></div>
+        <button class="mode-card card-agent" @click="goToChat('agent')">
           <div class="card-top">
-            <div class="card-icon" :class="selectedMode === 'agent' ? 'icon-agent-active' : 'icon-idle'">
+            <div class="card-icon icon-agent-active">
               <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                 <line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/>
               </svg>
             </div>
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
-              class="card-arrow" :class="selectedMode === 'agent' ? 'arrow-agent-active' : 'arrow-idle'">
+              class="card-arrow arrow-agent">
               <line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/>
             </svg>
           </div>
-          <h3 class="card-title" :class="selectedMode === 'agent' ? 'title-agent-active' : 'title-idle'">📊 政策分析 Agent</h3>
-          <p class="card-desc" :class="selectedMode === 'agent' ? 'desc-active' : 'desc-idle'">
-            深度拆解政策背景、适用范围、影响分析，生成结构化报告
-          </p>
-          <div class="card-tags">
-            <span class="card-tag" :class="selectedMode === 'agent' ? 'tag-agent' : 'tag-idle'">多步推理</span>
-            <span class="card-tag" :class="selectedMode === 'agent' ? 'tag-agent' : 'tag-idle'">深度报告</span>
+          <div class="card-body">
+            <h3 class="card-title title-agent-active">📊 政策分析 Agent</h3>
+            <p class="card-desc desc-active">
+              深度拆解政策背景、适用范围、影响分析，生成结构化报告
+            </p>
+            <div class="card-tags">
+              <span class="card-tag tag-agent">多步推理</span>
+              <span class="card-tag tag-agent">深度报告</span>
+            </div>
+            <div class="card-cta cta-agent">
+              <span>立刻体验</span>
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                <line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/>
+              </svg>
+            </div>
           </div>
         </button>
       </div>
@@ -349,7 +357,7 @@ const handleSend = () => {
    ============================================================ */
 .home-page {
   min-height: 100vh;
-  background: #fff;
+  background: #F0F2F6;
   display: flex;
   flex-direction: column;
   position: relative;
@@ -801,6 +809,7 @@ const handleSend = () => {
   margin-bottom: 48px;
 }
 
+/* 卡片基础 */
 .mode-card {
   text-align: left;
   padding: 20px;
@@ -808,55 +817,21 @@ const handleSend = () => {
   border: 1px solid #e2e8f0;
   background: #fff;
   cursor: pointer;
-  transition: transform 0.22s cubic-bezier(.34,1.56,.64,1), box-shadow 0.22s ease, background 0.18s ease, border-color 0.18s ease;
+  overflow: hidden;
+  transition:
+    transform 0.26s cubic-bezier(.34,1.56,.64,1),
+    box-shadow 0.24s ease,
+    background 0.2s ease,
+    border-color 0.2s ease;
   box-shadow: 0 4px 24px rgba(0, 0, 0, 0.06);
 }
 
-.mode-card:hover {
-  transform: translateY(-4px) scale(1.015);
-}
-
-/* QA card states */
-.card-qa:hover {
-  border-color: #fde68a;
-  background: rgba(245, 158, 11, 0.04);
-  box-shadow: 0 12px 40px rgba(245, 158, 11, 0.18), 0 2px 8px rgba(0,0,0,0.06);
-}
-.card-qa-selected {
-  background: linear-gradient(135deg, rgba(251,191,36,0.08) 0%, rgba(249,115,22,0.06) 100%);
-  border-color: #fcd34d;
-  box-shadow: 0 8px 32px rgba(245,158,11,0.22), 0 2px 8px rgba(0,0,0,0.05);
-}
-
-/* Agent card states */
-.card-agent:hover {
-  border-color: #ddd6fe;
-  background: rgba(139, 92, 246, 0.04);
-  box-shadow: 0 12px 40px rgba(168, 85, 247, 0.18), 0 2px 8px rgba(0,0,0,0.06);
-}
-.card-agent-selected {
-  background: linear-gradient(135deg, rgba(139,92,246,0.08) 0%, rgba(109,40,217,0.06) 100%);
-  border-color: #c4b5fd;
-  box-shadow: 0 8px 32px rgba(168,85,247,0.22), 0 2px 8px rgba(0,0,0,0.05);
-}
-
-/* Card accent line (top) */
-.card-accent-line {
-  width: 100%;
-  height: 2px;
-  border-radius: 2px;
-  margin-bottom: 16px;
-  transition: all 0.3s ease;
-}
-.accent-idle  { background: #f1f5f9; opacity: 0.6; }
-.accent-qa    { background: linear-gradient(to right, #f59e0b, #f97316); opacity: 1; }
-.accent-agent { background: linear-gradient(to right, #8b5cf6, #7c3aed); opacity: 1; }
-
+/* ── 顶部图标行 ── */
 .card-top {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  margin-bottom: 12px;
+  margin-bottom: 28px;
 }
 
 .card-icon {
@@ -866,40 +841,48 @@ const handleSend = () => {
   display: flex;
   align-items: center;
   justify-content: center;
-  transition: transform 0.22s cubic-bezier(.34,1.56,.64,1), background 0.18s ease;
+  transition: transform 0.26s cubic-bezier(.34,1.56,.64,1);
 }
-.mode-card:hover .card-icon {
-  transform: scale(1.12) rotate(-4deg);
-}
-
-.icon-idle       { background: #f1f5f9; color: #94a3b8; }
-.icon-qa-active  { background: linear-gradient(135deg, #f59e0b, #f97316); color: #fff; box-shadow: 0 4px 12px rgba(245,158,11,0.3); }
+.icon-qa-active    { background: linear-gradient(135deg, #f59e0b, #f97316); color: #fff; box-shadow: 0 4px 12px rgba(245,158,11,0.3); }
 .icon-agent-active { background: linear-gradient(135deg, #8b5cf6, #7c3aed); color: #fff; box-shadow: 0 4px 12px rgba(139,92,246,0.3); }
 
 .card-arrow {
-  transition: transform 0.22s cubic-bezier(.34,1.56,.64,1), color 0.18s ease, opacity 0.18s ease;
+  transition: transform 0.24s cubic-bezier(.34,1.56,.64,1), opacity 0.2s ease;
+  opacity: 0.45;
 }
-.arrow-idle        { color: #94a3b8; opacity: 0.3; }
-.arrow-qa-active   { color: #f59e0b; opacity: 1; transform: translateX(3px); }
-.arrow-agent-active { color: #8b5cf6; opacity: 1; transform: translateX(3px); }
-.mode-card:hover .card-arrow {
-  opacity: 1;
-  transform: translateX(3px);
+.arrow-qa    { color: #f59e0b; }
+.arrow-agent { color: #8b5cf6; }
+
+/* ── 内容区：clip 裁剪 + 整体上移让 CTA 露出 ── */
+.card-body {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  /* 多留 36px 给 CTA，平时被父级 overflow:hidden 裁掉 */
+  transform: translateY(0);
+  transition: transform 0.28s cubic-bezier(.34,1.56,.64,1);
 }
 
-.card-title { font-size: 0.95rem; font-weight: 600; margin: 0 0 6px; transition: color 0.2s; }
-.title-idle        { color: #94a3b8; }
-.title-qa-active   { color: #92400e; }
+.card-title {
+  font-size: 0.95rem;
+  font-weight: 600;
+  margin: 0 0 6px;
+}
+.title-qa-active    { color: #92400e; }
 .title-agent-active { color: #5b21b6; }
 
-.card-desc  { font-size: 0.8rem; line-height: 1.6; margin: 0 0 12px; transition: color 0.2s; }
-.desc-idle   { color: #94a3b8; }
-.desc-active { color: #475569; }
+.card-desc {
+  font-size: 0.8rem;
+  line-height: 1.6;
+  margin: 0 0 10px;
+  color: #475569;
+}
 
 .card-tags {
   display: flex;
   gap: 6px;
   flex-wrap: wrap;
+  margin-bottom: 14px;
 }
 
 .card-tag {
@@ -907,12 +890,58 @@ const handleSend = () => {
   border-radius: 100px;
   border: 1px solid;
   font-size: 11px;
-  transition: background 0.18s, color 0.18s, border-color 0.18s;
 }
+.tag-qa    { background: rgba(245,158,11,0.10); color: #d97706; border-color: rgba(245,158,11,0.25); }
+.tag-agent { background: rgba(139,92,246,0.10); color: #7c3aed; border-color: rgba(139,92,246,0.25); }
 
-.tag-idle  { background: #f8fafc; color: #94a3b8; border-color: #e2e8f0; }
-.tag-qa    { background: rgba(245,158,11,0.1); color: #d97706; border-color: rgba(245,158,11,0.22); }
-.tag-agent { background: rgba(139,92,246,0.1); color: #7c3aed; border-color: rgba(139,92,246,0.22); }
+/* ── 立刻体验 CTA ── */
+.card-cta {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 12px;
+  font-weight: 600;
+  opacity: 0;
+  transform: translateY(4px);
+  transition: opacity 0.22s ease, transform 0.22s ease;
+}
+.cta-qa    { color: #d97706; }
+.cta-agent { color: #7c3aed; }
+
+/* ── QA 卡片 hover ── */
+.card-qa {
+  background: linear-gradient(135deg, rgba(251,191,36,0.07) 0%, rgba(249,115,22,0.05) 100%);
+  border-color: #fcd34d;
+  box-shadow: 0 6px 28px rgba(245,158,11,0.18), 0 2px 8px rgba(0,0,0,0.05);
+}
+.card-qa:hover {
+  transform: translateY(-5px) scale(1.018);
+  background: linear-gradient(135deg, rgba(251,191,36,0.14) 0%, rgba(249,115,22,0.10) 100%);
+  border-color: #fbbf24;
+  box-shadow: 0 16px 48px rgba(245,158,11,0.28), 0 4px 12px rgba(0,0,0,0.06);
+}
+.card-qa:hover .card-icon    { transform: scale(1.12) rotate(-5deg); }
+.card-qa:hover .card-arrow   { opacity: 1; transform: translateX(4px); }
+.card-qa:hover .card-body    { transform: translateY(-14px); }
+.card-qa:hover .card-cta     { opacity: 1; transform: translateY(0); }
+
+/* ── Agent 卡片 hover ── */
+.card-agent {
+  background: linear-gradient(135deg, rgba(139,92,246,0.07) 0%, rgba(109,40,217,0.05) 100%);
+  border-color: #c4b5fd;
+  box-shadow: 0 6px 28px rgba(139,92,246,0.18), 0 2px 8px rgba(0,0,0,0.05);
+}
+.card-agent:hover {
+  transform: translateY(-5px) scale(1.018);
+  background: linear-gradient(135deg, rgba(139,92,246,0.13) 0%, rgba(109,40,217,0.09) 100%);
+  border-color: #a78bfa;
+  box-shadow: 0 16px 48px rgba(139,92,246,0.28), 0 4px 12px rgba(0,0,0,0.06);
+}
+.card-agent:hover .card-icon  { transform: scale(1.12) rotate(-5deg); }
+.card-agent:hover .card-arrow { opacity: 1; transform: translateX(4px); }
+.card-agent:hover .card-body  { transform: translateY(-14px); }
+.card-agent:hover .card-cta   { opacity: 1; transform: translateY(0); }
+
 
 /* ============================================================
    特性标签栏

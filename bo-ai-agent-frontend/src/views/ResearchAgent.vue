@@ -354,7 +354,17 @@ const handleNewChat = () => {
 
 // ── 生命周期 ──────────────────────────────────────────────
 onMounted(() => {
-  addMessage('你好，我是信息采集研究员。我可以帮你自动搜索、整理公开信息并生成研究报告。请描述你想要研究的主题。', false)
+  // 读取首页带过来的初始问题
+  const initQuestion = sessionStorage.getItem('initQuestion')
+  sessionStorage.removeItem('initQuestion')
+
+  if (initQuestion && initQuestion.trim()) {
+    // 有初始问题：直接发送，不显示欢迎语
+    inputMessage.value = initQuestion.trim()
+    nextTick(() => sendMessage())
+  } else {
+    addMessage('你好，我是信息采集研究员。我可以帮你自动搜索、整理公开信息并生成研究报告。请描述你想要研究的主题。', false)
+  }
 })
 
 onBeforeUnmount(() => {

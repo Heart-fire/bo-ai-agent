@@ -25,16 +25,4 @@ defineProps({
   font-size: 18px;
   border-radius: 50%;
 }
-
-.policy {
-  background: linear-gradient(45deg, #1d6bf3, #4d8fff);
-}
-
-.research {
-  background: linear-gradient(45deg, #0d9488, #14b8a6);
-}
-
-.default, .super {
-  background: linear-gradient(45deg, #3f51b5, #5677fc);
-}
 </style> 

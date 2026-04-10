@@ -398,7 +398,18 @@ const renderMarkdown = (text) => {
 // ── 生命周期 ──────────────────────────────────────────────
 onMounted(() => {
   chatId.value = getPersistentChatId()
-  addMessage('您好！我是北京政策问答助手，可以帮您解答社保、交通、积分落户等政策问题。请问有什么可以帮您？', false)
+
+  // 读取首页带过来的初始问题
+  const initQuestion = sessionStorage.getItem('initQuestion')
+  sessionStorage.removeItem('initQuestion')
+
+  if (initQuestion && initQuestion.trim()) {
+    // 有初始问题：直接发送，不显示欢迎语
+    inputMessage.value = initQuestion.trim()
+    nextTick(() => sendMessage())
+  } else {
+    addMessage('您好！我是北京政策问答助手，可以帮您解答社保、交通、积分落户等政策问题。请问有什么可以帮您？', false)
+  }
 })
 
 onBeforeUnmount(() => {
