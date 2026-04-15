@@ -41,17 +41,13 @@
       <div class="header-inner">
         <div class="brand">
           <div class="brand-icon">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-              <path d="M12 2L2 7l10 5 10-5-10-5z"/>
-              <path d="M2 17l10 5 10-5"/>
-              <path d="M2 12l10 5 10-5"/>
-            </svg>
+            <img src="/政策通知.png" width="27" height="27" alt="政策通" />
           </div>
           <span class="brand-name">政策通</span>
         </div>
         <nav class="site-nav">
-          <a href="#" class="nav-link">文档</a>
-          <a href="#" class="nav-link">关于</a>
+          <router-link to="/docs" class="nav-link">文档</router-link>
+          <router-link to="/about" class="nav-link">关于</router-link>
           <button class="nav-start-btn" @click="goToChat('qa')">立即开始</button>
         </nav>
       </div>
@@ -524,13 +520,9 @@ const handleSend = () => {
 .brand-icon {
   width: 32px;
   height: 32px;
-  border-radius: 8px;
-  background: linear-gradient(135deg, #ef4444, #f97316);
   display: flex;
   align-items: center;
   justify-content: center;
-  color: white;
-  box-shadow: 0 4px 12px rgba(239, 68, 68, 0.35);
 }
 
 .brand-name {

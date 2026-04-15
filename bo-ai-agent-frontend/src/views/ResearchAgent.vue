@@ -11,11 +11,9 @@
     <header class="top-bar">
       <div class="top-bar-left">
         <div class="brand-icon">
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <line x1="18" y1="20" x2="18" y2="10"/>
-            <line x1="12" y1="20" x2="12" y2="4"/>
-            <line x1="6" y1="20" x2="6" y2="14"/>
-          </svg>
+          <div class="brand-icon">
+            <img src="/政策通知.png" width="25" height="25" alt="政策通" />
+          </div>
         </div>
         <span class="brand-name">政策通</span>
         <span class="divider">/</span>
@@ -428,10 +426,6 @@ onBeforeUnmount(() => {
 .brand-icon {
   width: 28px; height: 28px;
   border-radius: 8px;
-  background: linear-gradient(135deg, #8b5cf6, #7c3aed);
-  display: flex; align-items: center; justify-content: center;
-  color: white;
-  box-shadow: 0 2px 8px rgba(139, 92, 246, 0.25);
 }
 
 .brand-name { font-size: 14px; font-weight: 500; color: #334155; }

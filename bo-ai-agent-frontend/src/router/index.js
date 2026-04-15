@@ -27,6 +27,24 @@ const routes = [
       title: '信息采集研究员 - 北京政策智能助手平台',
       description: '自主采集公开信息，生成政策研究报告，支持积分落户、社保、交通等多类政策'
     }
+  },
+  {
+    path: '/docs',
+    name: 'Documentation',
+    component: () => import('../views/Documentation.vue'),
+    meta: {
+      title: '文档 - 政策通',
+      description: '政策通使用文档：快速开始、使用指南、API 文档和常见问题'
+    }
+  },
+  {
+    path: '/about',
+    name: 'About',
+    component: () => import('../views/About.vue'),
+    meta: {
+      title: '关于 - 政策通',
+      description: '了解政策通：AI 驱动的政策咨询平台，让每个人都能读懂政策'
+    }
   }
 ]
 
