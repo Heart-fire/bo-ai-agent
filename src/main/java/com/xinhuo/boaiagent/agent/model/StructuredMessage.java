@@ -234,8 +234,9 @@ public class StructuredMessage {
         private Object data;
     }
 
-    // ========== 便捷创建方法 ==========
 
+
+    // ========== 便捷创建方法 ==========
     public static StructuredMessage step(int number, String thought) {
         return StructuredMessage.builder()
                 .type(MessageType.STEP)

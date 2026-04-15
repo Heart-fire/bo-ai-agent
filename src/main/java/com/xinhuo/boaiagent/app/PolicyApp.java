@@ -2,8 +2,7 @@ package com.xinhuo.boaiagent.app;
 
 import com.xinhuo.boaiagent.advisor.MyLoggerAvisor;
 import com.xinhuo.boaiagent.advisor.ReReadingAdvisor;
-import com.xinhuo.boaiagent.chatMemory.FileBasedChatMemory;
-import com.xinhuo.boaiagent.rag.PolicyRagCustomAdvisorFactory;
+import com.xinhuo.boaiagent.chatMemory.PgRedisChatMemory;
 import com.xinhuo.boaiagent.rag.QueryRewriter;
 import jakarta.annotation.Resource;
 import lombok.extern.slf4j.Slf4j;
@@ -78,31 +77,14 @@ public class PolicyApp {
     @Resource
     private ToolCallbackProvider toolCallbackProvider;
 
-    public PolicyApp(ChatModel dashscopeChatModel) {
-        String fileDir = System.getProperty("user.dir") + "/tmp/chat-memory";
-        ChatMemory chatMemory = new FileBasedChatMemory(fileDir);
+    public PolicyApp(ChatModel dashscopeChatModel, PgRedisChatMemory pgRedisChatMemory) {
         chatClient = ChatClient.builder(dashscopeChatModel)
                 .defaultSystem(SYSTEM_PROMPT)
                 .defaultAdvisors(
-                        MessageChatMemoryAdvisor.builder(chatMemory).build(),
+                        MessageChatMemoryAdvisor.builder(pgRedisChatMemory).build(),
                         new ReReadingAdvisor()
                 )
                 .build();
-    }
-
-    /**
-     * 基础多轮对话
-     */
-    public String doChat(String message, String chatId) {
-        ChatResponse chatResponse = chatClient
-                .prompt()
-                .user(message)
-                .advisors(spec -> spec.param(ChatMemory.CONVERSATION_ID, chatId))
-                .call()
-                .chatResponse();
-        String content = chatResponse.getResult().getOutput().getText();
-        log.info("PolicyApp doChat content: {}", content);
-        return content;
     }
 
     /**

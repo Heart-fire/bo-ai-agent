@@ -3,7 +3,8 @@ spring:
     name: bo-ai-agent
   profiles:
     active: local
-#    数据库配置 ##########
+#    数据库配置 ***********
+#    Redis配置 **********
   ai:
     vectorstore:
       pgvector:
@@ -11,7 +12,7 @@ spring:
         index-type: HNSW
         dimensions: 1536
         distance-type: COSINE_DISTANCE
-        max-document-batch-size: 10000 # Optional: Maximum number of documents per batch
+        max-document-batch-size: 10000 # 可选：每批文件的最大数量
 server:
     port: 8123
     address: 0.0.0.0

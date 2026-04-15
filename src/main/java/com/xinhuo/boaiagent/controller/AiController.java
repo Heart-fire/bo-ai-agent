@@ -40,17 +40,6 @@ public class AiController {
 
 
     /**
-     * 政策问答 - 基础多轮对话（同步）
-     *
-     * @param message 用户输入
-     * @param chatId  会话 ID（用于多轮记忆隔离）
-     */
-    @GetMapping("/policy_app/chat")
-    public String doChatWithPolicyApp(String message, String chatId) {
-        return policyApp.doChat(message, chatId);
-    }
-
-    /**
      * 政策问答 - 流式输出（SSE）
      *
      * @param message 用户输入
@@ -107,6 +96,7 @@ public class AiController {
         ResearchAgent researchAgent = new ResearchAgent(allTools, dashscopeChatModel);
         return researchAgent.runStream(message);
     }
+
 
     /**
      * 流式执行（SSE）
