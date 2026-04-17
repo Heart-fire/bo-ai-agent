@@ -12,8 +12,7 @@ import org.springframework.ai.tool.annotation.ToolParam;
 import org.springframework.stereotype.Component;
 
 /**
- * 网页搜索工具类（基于智谱 AI Web Search API）
- * 英文识别度高
+ * 网页搜索工具类
  */
 @Slf4j
 @Component
@@ -29,11 +28,12 @@ public class WebSearchTool {
      */
     @Tool(description = "Web search, searching for information on the Internet")
     public String webSearch(@ToolParam(description = "Search keywords") String searchQuery) {
-        return webSearchAdvanced(searchQuery, 5, null, null);
+        return webSearchAdvanced(searchQuery, 2, null, null);
     }
 
+
     /**
-     * 网页搜索（高级）
+     * 网页搜索（集成搜狗搜索）
      * @param searchQuery 搜索关键词
      * @param count 返回结果数量
      * @param domainFilter 域名过滤
@@ -50,9 +50,9 @@ public class WebSearchTool {
         try {
             BigModelWebSearchRequest request = BigModelWebSearchRequest.builder()
                     .search_query(searchQuery)
-                    .search_engine("search_std")
+                    .search_engine("search_pro_sogou") // 搜狗搜索
                     .search_intent(false)
-                    .count(count != null ? count : 5)
+                    .count(count != null ? count : 2)
                     .search_domain_filter(domainFilter)
                     .search_recency_filter(recencyFilter != null ? recencyFilter : "noLimit")
                     .content_size("medium")
@@ -90,13 +90,14 @@ public class WebSearchTool {
 
         for (int i = 0; i < response.getSearch_result().size(); i++) {
             BigModelWebSearchResponse.SearchResult result = response.getSearch_result().get(i);
-            sb.append("【").append(i + 1).append("】").append(result.getTitle()).append("\n");
-            sb.append("链接：").append(result.getLink()).append("\n");
+            String title = cleanText(result.getTitle());
+            String link = cleanText(result.getLink());
+            sb.append("【").append(i + 1).append("】").append(title).append("\n");
+            sb.append("链接：").append(link).append("\n");
             if (result.getContent() != null && !result.getContent().isEmpty()) {
-                // 限制摘要长度，避免太长
-                String content = result.getContent();
-                if (content.length() > 200) {
-                    content = content.substring(0, 200) + "...";
+                String content = cleanText(result.getContent());
+                if (content.length() > 50) {
+                    content = content.substring(0, 50) + "...";
                 }
                 sb.append("摘要：").append(content).append("\n");
             }
@@ -104,5 +105,15 @@ public class WebSearchTool {
         }
 
         return sb.toString();
+    }
+
+    /**
+     * 清理文本中的换行符和多余空白
+     */
+    private String cleanText(String text) {
+        if (text == null || text.isEmpty()) {
+            return "";
+        }
+        return text.replaceAll("[\\r\\n]+", " ").replaceAll("\\s+", " ").trim();
     }
 }
