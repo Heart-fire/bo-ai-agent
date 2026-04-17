@@ -15,9 +15,9 @@ public class PolicyContextualQueryAugmenterFactory {
                 抱歉，当前知识库中暂未收录与您问题相关的政策文档。
                 建议您通过以下官方渠道获取准确信息：
                 - 北京市政务服务热线：12345
-                - 北京市人力资源和社会保障局官网：rsj.beijing.gov.cn
-                - 北京市政务服务网：https://banshi.beijing.gov.cn
-                请以官方最新公告为准，如有变化请及时关注官网更新。
+                - 北京市人民政府网：https://banshi.beijing.gov.cn
+                请以官方力资源和社会保障局官网：rsj.beijing.gov.cn
+                - 北京市政务服务网最新公告为准，如有变化请及时关注官网更新。
                 """);
         return ContextualQueryAugmenter.builder()
                 .allowEmptyContext(false)

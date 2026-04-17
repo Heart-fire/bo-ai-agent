@@ -9,7 +9,7 @@ import org.springframework.stereotype.Component;
 import java.util.List;
 
 /**
- * 查询扩展器 Demo
+ * 查询扩展器
  */
 @Component
 public class MultiQueryExpanderDemo {
@@ -26,7 +26,7 @@ public class MultiQueryExpanderDemo {
                 .chatClientBuilder(chatClientBuilder)
                 .numberOfQueries(3)
                 .build();
-        List<Query> queries = queryExpander.expand(new Query("谁是王哈啊哈啊？"));
+        List<Query> queries = queryExpander.expand(new Query("社保从哪里查询？"));
         return queries;
     }
 }

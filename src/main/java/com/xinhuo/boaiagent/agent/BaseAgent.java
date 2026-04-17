@@ -34,7 +34,7 @@ public abstract class BaseAgent {
 
     // 执行步骤控制
     private int currentStep = 0;
-    private int maxSteps = 7;
+    private int maxSteps = 4;
 
     // LLM 大模型
     private ChatClient chatClient;
@@ -98,7 +98,7 @@ public abstract class BaseAgent {
     public SseEmitter runStream(String userPrompt) {
         // 不设超时（0=无限），由服务端任务完成后主动关闭连接
         SseEmitter sseEmitter = new SseEmitter(0L);
-        // 使用线程异步处理，避免阻塞主线程
+        // 异步处理
         CompletableFuture.runAsync(() -> {
             // 1、基础校验
             try {
@@ -201,27 +201,19 @@ public abstract class BaseAgent {
 
     /**
      * 定义单个步骤
-     *
-     * @return
      */
     public abstract String step();
 
     /**
      * 流式执行单步（子类可重写以实现逐步推送 SSE 事件）
-     * 默认实现退化为调用 step()
-     *
-     * @param emitter SSE 发射器，用于实时推送事件
-     * @return 步骤执行结果
      */
     public String stepStream(SseEmitter emitter) {
         return step();
     }
 
+
     /**
      * 安全发送 SSE 事件，统一处理 IOException / IllegalStateException
-     *
-     * @param emitter SSE 发射器
-     * @param data    要发送的数据
      */
     protected void sendSse(SseEmitter emitter, Object data) {
         try {

@@ -11,11 +11,14 @@ import java.util.List;
  */
 @Component
 class MyTokenTextSplitter {
+
+    // 默认的 TokenTextSplitter
     public List<Document> splitDocuments(List<Document> documents) {
         TokenTextSplitter splitter = new TokenTextSplitter();
         return splitter.apply(documents);
     }
 
+    // 自定义的 TokenTextSplitter
     public List<Document> splitCustomized(List<Document> documents) {
         TokenTextSplitter splitter = TokenTextSplitter.builder()
                 .withChunkSize(200)

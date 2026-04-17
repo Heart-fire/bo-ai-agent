@@ -9,7 +9,7 @@ import org.springframework.stereotype.Component;
 import java.util.List;
 
 /**
- * 基于 AI 的文档元信息增强器
+ * 基于 AI 的文档[元信息]增强器
  * 为文档补充元信息
  */
 @Component

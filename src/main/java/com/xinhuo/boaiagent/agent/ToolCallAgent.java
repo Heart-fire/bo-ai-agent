@@ -165,7 +165,7 @@ public class ToolCallAgent extends ReActAgent {
 
             // 根据工具类型解析结果
             if ("webSearch".equals(toolName) || "webSearchAdvanced".equals(toolName) || "webScraping".equals(toolName)) {
-                // 直接用正则解析搜索结果为卡片，无需额外 LLM 调用
+                // 直接用正则解析 搜索结果为卡片，无需额外 LLM 调用
                 List<SearchResultParser.DisplayCard> cards = SearchResultParser.parseToCards(toolData);
                 for (SearchResultParser.DisplayCard card : cards) {
                     cardResults.add(CardResult.builder()
@@ -188,8 +188,6 @@ public class ToolCallAgent extends ReActAgent {
             log.info("工具 {} 返回的结果：{}", toolName,
                     toolData.length() > 200 ? toolData.substring(0, 200) + "..." : toolData);
         }
-        // 返回 JSON 格式的卡片数据
-//        return JSONUtil.toJsonStr(cardResults);
         Map<String, Object> action = new HashMap<>();
         action.put("type", "action");
         action.put("tool", toolName);
@@ -305,13 +303,26 @@ public class ToolCallAgent extends ReActAgent {
     /**
      * 流式输出总结文本：使用 ChatClient 流式调用 LLM，逐 token 推送 SSE 事件
      */
+    // TODO 优化
     @Override
     protected void streamSummary(org.springframework.web.servlet.mvc.method.annotation.SseEmitter emitter,
                                   List<String> results) {
         try {
-            // 构建上下文：从搜索卡片中提取关键信息
+            // 去重（与 generateSummary 保持一致，按标题去重）
+            List<SearchResultParser.DisplayCard> uniqueCards = searchCards.stream()
+                    .filter(card -> StrUtil.isNotBlank(card.getTitle()))
+                    .collect(java.util.stream.Collectors.toMap(
+                            SearchResultParser.DisplayCard::getTitle,
+                            card -> card,
+                            (existing, replacement) -> existing
+                    ))
+                    .values()
+                    .stream()
+                    .toList();
+
+            // 构建上下文：从去重后的卡片中提取关键信息
             StringBuilder context = new StringBuilder();
-            for (SearchResultParser.DisplayCard card : searchCards) {
+            for (SearchResultParser.DisplayCard card : uniqueCards) {
                 if (StrUtil.isNotBlank(card.getTitle())) {
                     context.append("【").append(card.getTitle()).append("】");
                 }

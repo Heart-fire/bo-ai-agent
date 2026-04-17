@@ -3,6 +3,7 @@ package com.xinhuo.boaiagent.app;
 import com.xinhuo.boaiagent.advisor.MyLoggerAvisor;
 import com.xinhuo.boaiagent.advisor.ReReadingAdvisor;
 import com.xinhuo.boaiagent.chatMemory.PgRedisChatMemory;
+import com.xinhuo.boaiagent.rag.PolicyRagCustomAdvisorFactory;
 import com.xinhuo.boaiagent.rag.QueryRewriter;
 import jakarta.annotation.Resource;
 import lombok.extern.slf4j.Slf4j;
@@ -15,7 +16,10 @@ import org.springframework.ai.chat.model.ChatModel;
 import org.springframework.ai.chat.model.ChatResponse;
 import org.springframework.ai.tool.ToolCallback;
 import org.springframework.ai.tool.ToolCallbackProvider;
+import org.springframework.ai.document.Document;
+import org.springframework.ai.vectorstore.SearchRequest;
 import org.springframework.ai.vectorstore.VectorStore;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.stereotype.Component;
 import reactor.core.publisher.Flux;
 
@@ -30,6 +34,8 @@ import java.util.List;
 public class PolicyApp {
 
     private final ChatClient chatClient;
+
+    private final PgRedisChatMemory pgRedisChatMemory;
 
     private static final String SYSTEM_PROMPT = """
             你是一名专业的北京市政策法规咨询顾问，具备丰富的政务知识，熟悉北京市各类民生政策。
@@ -77,8 +83,11 @@ public class PolicyApp {
     @Resource
     private ToolCallbackProvider toolCallbackProvider;
 
-    public PolicyApp(ChatModel dashscopeChatModel, PgRedisChatMemory pgRedisChatMemory) {
-        chatClient = ChatClient.builder(dashscopeChatModel)
+    /**
+     * 根据指定的 ChatModel 构建 ChatClient
+     */
+    private ChatClient buildChatClient(ChatModel chatModel) {
+        return ChatClient.builder(chatModel)
                 .defaultSystem(SYSTEM_PROMPT)
                 .defaultAdvisors(
                         MessageChatMemoryAdvisor.builder(pgRedisChatMemory).build(),
@@ -87,13 +96,20 @@ public class PolicyApp {
                 .build();
     }
 
+    public PolicyApp(@Qualifier("dashScopeChatModel") ChatModel dashscopeChatModel,
+                     PgRedisChatMemory pgRedisChatMemory) {
+        this.pgRedisChatMemory = pgRedisChatMemory;
+        this.chatClient = buildChatClient(dashscopeChatModel);
+    }
+
+
     /**
-     * 流式输出（SSE）+ RAG 增强检索
+     * 智能判断是否需要 RAG 增强检索
      */
-    public Flux<String> doChatByStream(String message, String chatId) {
-        // 查询重写，提升召回质量
+    public Flux<String> doChatByStream(String message, String chatId, ChatModel chatModel) {
+        ChatClient chatClient = buildChatClient(chatModel);
         String rewrittenMessage = queryRewriter.doQueryRewrite(message);
-        log.info("查询重写: {} → {}", message, rewrittenMessage);
+        log.info("政策相关问题，查询重写: {} → {}", message, rewrittenMessage);
         return chatClient
                 .prompt()
                 .user(rewrittenMessage)
@@ -109,6 +125,7 @@ public class PolicyApp {
      */
     record PolicyReport(String policyName, String summary, List<String> keyPoints, String officialContact) {
     }
+
 
     public PolicyReport doChatWithReport(String message, String chatId) {
         PolicyReport report = chatClient
@@ -128,6 +145,7 @@ public class PolicyApp {
         return report;
     }
 
+
     /**
      * RAG 增强对话（pgVector 本地知识库）
      */
@@ -140,13 +158,8 @@ public class PolicyApp {
                 .user(message)
                 .advisors(spec -> spec.param(ChatMemory.CONVERSATION_ID, chatId))
                 .advisors(new MyLoggerAvisor())
-                // 使用 pgVector 本地知识库（政策文档已入库后启用）
-//                .advisors(QuestionAnswerAdvisor.builder(pgVectorVectorStore).build())
-                // 使用自定义 RAG（按 category 过滤，如 "social"/"traffic"/"residence"）
-//                .advisors(
-//                        PolicyRagCustomAdvisorFactory
-//                                .createPolicyRagCustomAdvisor(pgVectorVectorStore, "social")
-//                )
+                // 使用自定义 RAG（无分类过滤，全库检索 + 相似度阈值 0.6）
+                .advisors(PolicyRagCustomAdvisorFactory.createPolicyRagAdvisorWithoutFilter(pgVectorVectorStore))
                 .toolCallbacks(toolCallbacks)
                 .call()
                 .chatResponse();
@@ -154,6 +167,7 @@ public class PolicyApp {
         log.info("PolicyApp doChatWithRag content: {}", content);
         return content;
     }
+
 
     /**
      * MCP 服务增强对话

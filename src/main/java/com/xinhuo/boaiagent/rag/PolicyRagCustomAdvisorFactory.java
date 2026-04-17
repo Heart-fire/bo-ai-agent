@@ -47,6 +47,7 @@ public class PolicyRagCustomAdvisorFactory {
                 .build();
     }
 
+
     /**
      * 不带分类过滤的全库检索（适用于用户问题跨多个政策类别时）
      */

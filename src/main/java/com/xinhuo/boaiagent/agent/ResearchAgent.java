@@ -6,6 +6,8 @@ import org.springframework.ai.chat.model.ChatModel;
 import org.springframework.ai.tool.ToolCallback;
 import org.springframework.stereotype.Component;
 
+import java.util.Map;
+
 /**
  * 公开信息采集研究员 Agent
  * 基于 ReAct 框架，给定研究主题后自主规划：搜索 → 抓取 → 整理 → 生成报告

@@ -100,8 +100,6 @@ public abstract class ReActAgent extends BaseAgent {
 
     /**
      * 流式执行单步：think 完成后立即推送 thought，再执行 act 推送 action
-     *
-     * @param emitter SSE 发射器，用于实时推送事件
      * @return 步骤执行结果
      */
     @Override

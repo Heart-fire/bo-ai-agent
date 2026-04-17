@@ -4,10 +4,10 @@ import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 
 @SpringBootApplication
-public class BoAiAgentApplication {
+public class PolicyAiAgentApplication {
 
     public static void main(String[] args) {
-        SpringApplication.run(BoAiAgentApplication.class, args);
+        SpringApplication.run(PolicyAiAgentApplication.class, args);
     }
 
 }
