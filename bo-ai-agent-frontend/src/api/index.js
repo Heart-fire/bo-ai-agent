@@ -55,13 +55,17 @@ export const getPersistentChatId = () => {
 }
 
 // 政策问答 SSE 流式对话
-export const chatWithPolicyApp = (message, chatId) => {
-  return connectSSE('/ai/policy_app/chat/sse', { message, chatId })
+export const chatWithPolicyApp = (message, chatId, model) => {
+  const params = { message, chatId }
+  if (model) params.model = model
+  return connectSSE('/ai/policy_app/chat/sse', params)
 }
 
 // 信息采集研究员 Agent SSE 流式
-export const chatWithResearchAgent = (message) => {
-  return connectSSE('/ai/research/chat', { message })
+export const chatWithResearchAgent = (message, model) => {
+  const params = { message }
+  if (model) params.model = model
+  return connectSSE('/ai/research/chat', params)
 }
 
 // 超级智能体 SSE 流式

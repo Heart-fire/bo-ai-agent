@@ -170,7 +170,7 @@ const techStack = [
 <style scoped>
 .about-page {
   min-height: 100vh;
-  background: #F0F2F6;
+  background: #FFFFFF;
   display: flex;
   flex-direction: column;
   color: #0f172a;

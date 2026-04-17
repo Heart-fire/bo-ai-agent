@@ -34,7 +34,7 @@ const routes = [
     component: () => import('../views/Documentation.vue'),
     meta: {
       title: '文档 - 政策通',
-      description: '政策通使用文档：快速开始、使用指南、API 文档和常见问题'
+      description: '政策通使用文档：快速开始、使用指南和常见问题'
     }
   },
   {

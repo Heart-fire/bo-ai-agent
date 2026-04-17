@@ -112,9 +112,7 @@
 
     <!-- 滚动到底部按钮 -->
     <button v-if="showScrollDown" class="scroll-down-btn" @click="scrollToBottom">
-      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-        <polyline points="6 9 12 15 18 9"/>
-      </svg>
+      <img src="@/assets/025-发送.png" width="18" height="18" alt="发送" />
     </button>
 
     <!-- 输入区域 -->
@@ -167,7 +165,7 @@
               @click="sendMessage"
               :disabled="!inputMessage.trim()"
             >
-              <img src="@/assets/025-发送.png" width="18" height="18" alt="发送" />
+              <img src="@/assets/Chat发送.png" width="18" height="18" alt="发送" />
             </button>
           </div>
         </div>
@@ -211,6 +209,7 @@ const inputMessage    = ref('')
 const isInputFocused  = ref(false)
 const copiedIndex     = ref(-1)
 const showScrollDown  = ref(false)
+const selectedModel   = ref('') // 从首页传过来的模型选择
 
 const scrollContainer = ref(null)
 const messagesEnd     = ref(null)
@@ -241,7 +240,7 @@ const sendMessage = () => {
   addMessage('', false)
 
   connectionStatus.value = 'connecting'
-  eventSource = chatWithPolicyApp(text, chatId.value)
+  eventSource = chatWithPolicyApp(text, chatId.value, selectedModel.value || undefined)
 
   eventSource.onmessage = (event) => {
     const data = event.data
@@ -356,29 +355,37 @@ const renderMarkdown = (text) => {
   // 水平线
   html = html.replace(/^---$/gm, '<hr class="md-hr"/>')
 
-  // 引用块
-  html = html.replace(/^&gt; (.+)$/gm, '<blockquote class="md-blockquote">$1</blockquote>')
+  // 引用块（兼容无空格：>text 或 > text）
+  html = html.replace(/^&gt;\s*(.+)$/gm, '<blockquote class="md-blockquote">$1</blockquote>')
 
-  // 标题
-  html = html.replace(/^### (.+)$/gm, '<h4 class="md-h3">$1</h4>')
-  html = html.replace(/^## (.+)$/gm,  '<h3 class="md-h2">$1</h3>')
-  html = html.replace(/^# (.+)$/gm,   '<h2 class="md-h1">$1</h2>')
+  // 标题（兼容无空格：###标题 或 ### 标题）
+  html = html.replace(/^###\s*(.+)$/gm, '<h4 class="md-h3">$1</h4>')
+  html = html.replace(/^##\s*(.+)$/gm,  '<h3 class="md-h2">$1</h3>')
+  html = html.replace(/^#\s*(.+)$/gm,   '<h2 class="md-h1">$1</h2>')
 
   // Checklist
   html = html.replace(/^- \[x\] (.+)$/gm, '<li class="md-check checked">✓ $1</li>')
   html = html.replace(/^- \[ \] (.+)$/gm, '<li class="md-check">○ $1</li>')
 
-  // 无序列表
-  html = html.replace(/^[-*•] (.+)$/gm, '<li class="md-li">$1</li>')
+  // 无序列表（兼容无空格）
+  html = html.replace(/^[-*•]\s*(.+)$/gm, '<li class="md-li">$1</li>')
   html = html.replace(/(<li class="md-li">.*<\/li>\n?)+/g, m => `<ul class="md-ul">${m}</ul>`)
 
-  // 有序列表
-  html = html.replace(/^\d+\. (.+)$/gm, '<li class="md-oli">$1</li>')
+  // 有序列表（兼容无空格：1.文本 或 1. 文本）
+  html = html.replace(/^\d+\.\s*(.+)$/gm, '<li class="md-oli">$1</li>')
   html = html.replace(/(<li class="md-oli">.*<\/li>\n?)+/g, m => `<ol class="md-ol">${m}</ol>`)
 
   // 粗体 & 内联代码
-  html = html.replace(/\*\*([^*]+)\*\*/g, '<strong class="md-bold">$1</strong>')
+  html = html.replace(/\*\*(.+?)\*\*/g, '<strong class="md-bold">$1</strong>')
   html = html.replace(/`([^`]+)`/g, '<code class="md-inline-code">$1</code>')
+
+  // 链接 [text](url)
+  html = html.replace(/\[([^\]]+)\]\(([^)]+)\)/g,
+    '<a class="md-link" href="$2" target="_blank" rel="noopener noreferrer">$1</a>')
+
+  // 自动链接（裸 URL）
+  html = html.replace(/(?<!href=")https?:\/\/[^\s<>)\]]+/g,
+    '<a class="md-link" href="$&" target="_blank" rel="noopener noreferrer">$&</a>')
 
   // 段落
   html = html.replace(/\n\n/g, '</p><p class="md-p">')
@@ -394,6 +401,13 @@ const renderMarkdown = (text) => {
 // ── 生命周期 ──────────────────────────────────────────────
 onMounted(() => {
   chatId.value = getPersistentChatId()
+
+  // 读取首页带过来的模型选择
+  const initModel = sessionStorage.getItem('initModel')
+  if (initModel) {
+    selectedModel.value = initModel
+    sessionStorage.removeItem('initModel')
+  }
 
   // 读取首页带过来的初始问题
   const initQuestion = sessionStorage.getItem('initQuestion')
@@ -708,10 +722,9 @@ onBeforeUnmount(() => {
   cursor: not-allowed; transition: all 0.15s;
 }
 .send-btn.send-active {
-  background: #1296db;
+  background: #F55D2D;
   color: #fff;
   cursor: pointer;
-  box-shadow: 0 4px 14px rgba(18, 150, 219, 0.35);
 }
 
 /* 有输入时图标变白色（亮色） */
@@ -720,7 +733,7 @@ onBeforeUnmount(() => {
 }
 
 .send-btn.send-active:hover {
-  background: #0ea5e9;
+  background: #F55D2D;
 }
 /* 重新生成 */
 .regen-bar { display: flex; justify-content: center; margin-top: 10px; }
@@ -780,6 +793,14 @@ onBeforeUnmount(() => {
   font-size: 0.87rem; margin-left: -20px; padding-left: 4px; margin-bottom: 4px;
 }
 .markdown-body :deep(.md-check.checked) { color: #16a34a; }
+.markdown-body :deep(.md-link) {
+  color: #ef4444; text-decoration: none;
+  border-bottom: 1px solid rgba(239,68,68,0.3);
+  transition: border-color 0.15s, color 0.15s;
+}
+.markdown-body :deep(.md-link:hover) {
+  color: #dc2626; border-bottom-color: #dc2626;
+}
 .markdown-body :deep(.md-hr) {
   border: none; border-top: 1px solid #e2e8f0; margin: 16px 0;
 }

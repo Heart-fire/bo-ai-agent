@@ -111,58 +111,9 @@
               </div>
             </div>
           </section>
-
-          <!-- API 文档 -->
+          <!-- 常见问题 -->
           <section :id="sections[3].id" class="doc-section">
             <h2 class="section-title">{{ sections[3].title }}</h2>
-            <p class="section-desc">如果你需要将政策通集成到自己的应用中，可以使用以下 API 接口。</p>
-
-            <div class="api-block">
-              <div class="api-header">
-                <span class="api-method post">POST</span>
-                <code class="api-url">/api/policy/chat</code>
-              </div>
-              <p class="api-desc">政策问答接口，基于 SSE 流式返回结果。</p>
-              <div class="code-block">
-                <pre><code>// 请求示例
-const response = await fetch('/api/policy/chat', {
-  method: 'POST',
-  headers: { 'Content-Type': 'application/json' },
-  body: JSON.stringify({
-    message: '社保缴纳比例是多少？',
-    chatId: 'your-chat-id'
-  })
-})
-
-// SSE 流式读取
-const reader = response.body.getReader()
-const decoder = new TextDecoder()</code></pre>
-              </div>
-            </div>
-
-            <div class="api-block">
-              <div class="api-header">
-                <span class="api-method post">POST</span>
-                <code class="api-url">/api/agent/chat</code>
-              </div>
-              <p class="api-desc">深度分析接口，Agent 自主采集信息并生成研究报告。</p>
-              <div class="code-block">
-                <pre><code>// 请求示例
-const response = await fetch('/api/agent/chat', {
-  method: 'POST',
-  headers: { 'Content-Type': 'application/json' },
-  body: JSON.stringify({
-    message: '分析2024年小微企业税收优惠政策',
-    chatId: 'your-chat-id'
-  })
-})</code></pre>
-              </div>
-            </div>
-          </section>
-
-          <!-- 常见问题 -->
-          <section :id="sections[4].id" class="doc-section">
-            <h2 class="section-title">{{ sections[4].title }}</h2>
             <div class="faq-list">
               <div v-for="(faq, i) in faqs" :key="i" class="faq-item">
                 <button class="faq-question" @click="toggleFaq(i)">
@@ -204,7 +155,6 @@ const sections = [
   { id: 'quick-start', title: '快速开始' },
   { id: 'guide', title: '使用指南' },
   { id: 'domains', title: '支持的政策领域' },
-  { id: 'api', title: 'API 文档' },
   { id: 'faq', title: '常见问题' },
 ]
 
@@ -224,7 +174,6 @@ const faqs = [
   { q: '我的对话数据安全吗？', a: '对话数据仅用于维持会话上下文，不会用于训练模型或分享给第三方。聊天记录存储在本地和加密数据库中。' },
   { q: '支持哪些地区的政策？', a: '目前主要覆盖北京市级和区级政策，包括社保、交通、住房、积分落户等领域。后续将逐步扩展到更多城市。' },
   { q: '深度分析和政策问答有什么区别？', a: '政策问答适合快速查询具体问题，直接给出精简答案；深度分析由 AI Agent 自主搜索、采集、推理，生成结构化的详细分析报告，适合需要全面了解政策背景的场景。' },
-  { q: '可以商用吗？', a: '目前政策通仅供个人学习和参考使用。如需商业合作或 API 接入，请联系我们。' },
 ]
 
 const activeSection = ref('quick-start')
@@ -245,7 +194,7 @@ const toggleFaq = (i) => {
 <style scoped>
 .doc-page {
   min-height: 100vh;
-  background: #F0F2F6;
+  background: #FFFFFF;
   display: flex;
   flex-direction: column;
   color: #0f172a;

@@ -111,15 +111,45 @@
                 深度分析
               </button>
             </div>
-            <!-- 发送按钮 -->
-            <button
-              class="search-send-btn"
-              :class="{ 'send-active': inputValue.trim() }"
-              :disabled="!inputValue.trim()"
-              @click="handleSend"
-            >
-              <img src="@/assets/025-发送.png" width="18" height="18" alt="发送" />
-            </button>
+            <div class="toolbar-right">
+              <!-- 模型选择下拉 -->
+              <div class="model-selector">
+                <button class="model-select-btn" @click="toggleModelDropdown">
+                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <rect x="4" y="4" width="16" height="16" rx="2"/>
+                    <path d="M9 9h6v6H9z"/>
+                  </svg>
+                  {{ MODEL_OPTIONS.find(m => m.key === selectedModel)?.label }}
+                  <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"
+                    :style="{ transform: showModelDropdown ? 'rotate(180deg)' : 'rotate(0)', transition: 'transform 0.2s' }">
+                    <polyline points="6 9 12 15 18 9"/>
+                  </svg>
+                </button>
+                <div v-if="showModelDropdown" class="model-dropdown">
+                  <button
+                    v-for="m in MODEL_OPTIONS"
+                    :key="m.key"
+                    class="model-option"
+                    :class="{ 'model-option-active': selectedModel === m.key }"
+                    @click="selectModel(m.key)"
+                  >
+                    <span class="model-option-label">{{ m.label }}</span>
+                    <svg v-if="selectedModel === m.key" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3">
+                      <polyline points="20 6 9 17 4 12"/>
+                    </svg>
+                  </button>
+                </div>
+              </div>
+              <!-- 发送按钮 -->
+              <button
+                class="search-send-btn"
+                :class="{ 'send-active': inputValue.trim() }"
+                :disabled="!inputValue.trim()"
+                @click="handleSend"
+              >
+                <img src="@/assets/025-发送.png" width="18" height="18" alt="发送" />
+              </button>
+            </div>
           </div>
         </div>
       </div>
@@ -224,7 +254,7 @@
 </template>
 
 <script setup>
-import { ref, nextTick } from 'vue'
+import { ref, nextTick, onMounted, onBeforeUnmount } from 'vue'
 import { useRouter } from 'vue-router'
 import { useHead } from '@vueuse/head'
 
@@ -259,6 +289,32 @@ const isFocused = ref(false)
 const selectedMode = ref(null)   // 'qa' | 'agent' | null
 const textareaRef = ref(null)
 
+// 模型选择
+const MODEL_OPTIONS = [
+  { key: 'dashscope', label: 'Qwen3-Max' },
+  { key: 'deepseek', label: 'DeepSeek' },
+]
+const selectedModel = ref('dashscope')
+const showModelDropdown = ref(false)
+
+const toggleModelDropdown = () => {
+  showModelDropdown.value = !showModelDropdown.value
+}
+
+const selectModel = (key) => {
+  selectedModel.value = key
+  showModelDropdown.value = false
+}
+
+// 点击外部关闭模型下拉
+const onDocClick = (e) => {
+  if (showModelDropdown.value && !e.target.closest('.model-selector')) {
+    showModelDropdown.value = false
+  }
+}
+onMounted(() => document.addEventListener('click', onDocClick))
+onBeforeUnmount(() => document.removeEventListener('click', onDocClick))
+
 // 切换模式（再次点击则取消）
 const toggleMode = (mode) => {
   selectedMode.value = selectedMode.value === mode ? null : mode
@@ -291,7 +347,7 @@ const handleKeyDown = (e) => {
   }
 }
 
-// 跳转到对应聊天页面，带上初始问题（存 sessionStorage）
+// 跳转到对应聊天页面，带上初始问题和模型（存 sessionStorage）
 const goToChat = (mode, question) => {
   const q = question || inputValue.value
   const target = mode === 'agent' ? '/research-agent' : '/policy-chat'
@@ -300,6 +356,7 @@ const goToChat = (mode, question) => {
   } else {
     sessionStorage.removeItem('initQuestion')
   }
+  sessionStorage.setItem('initModel', selectedModel.value)
   router.push(target)
 }
 
@@ -353,7 +410,7 @@ const handleSend = () => {
    ============================================================ */
 .home-page {
   min-height: 100vh;
-  background: #F0F2F6;
+  background: #FFFFFF;
   display: flex;
   flex-direction: column;
   position: relative;
@@ -526,8 +583,8 @@ const handleSend = () => {
 }
 
 .brand-name {
-  font-size: 16px;
-  font-weight: 600;
+  font-size: 20px;
+  font-weight: 650;
   color: #0f172a;
   letter-spacing: -0.02em;
 }
@@ -666,6 +723,89 @@ const handleSend = () => {
   display: flex;
   align-items: center;
   justify-content: space-between;
+}
+
+.toolbar-right {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+/* 模型选择器 */
+.model-selector {
+  position: relative;
+}
+
+.model-select-btn {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  padding: 6px 10px;
+  border-radius: 10px;
+  border: 1px solid #e2e8f0;
+  background: #f8fafc;
+  color: #64748b;
+  font-size: 12px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  white-space: nowrap;
+}
+
+.model-select-btn:hover {
+  color: #334155;
+  border-color: #cbd5e1;
+  background: #f1f5f9;
+}
+
+.model-dropdown {
+  position: absolute;
+  bottom: calc(100% + 6px);
+  right: 0;
+  min-width: 140px;
+  background: #fff;
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
+  padding: 4px;
+  z-index: 100;
+  animation: dropIn 0.15s ease-out;
+}
+
+@keyframes dropIn {
+  from { opacity: 0; transform: translateY(4px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+.model-option {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  padding: 8px 12px;
+  border-radius: 8px;
+  border: none;
+  background: transparent;
+  color: #475569;
+  font-size: 13px;
+  cursor: pointer;
+  transition: all 0.12s ease;
+}
+
+.model-option:hover {
+  background: #f8fafc;
+  color: #0f172a;
+}
+
+.model-option-active {
+  color: #0f172a;
+  font-weight: 500;
+  background: #f1f5f9;
+}
+
+.model-option-label {
+  display: flex;
+  align-items: center;
+  gap: 6px;
 }
 
 .mode-btns {

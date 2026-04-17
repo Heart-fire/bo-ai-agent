@@ -177,7 +177,7 @@
               @click="sendMessage"
               :disabled="!inputMessage.trim() || connectionStatus === 'connecting'"
             >
-              <img src="@/assets/025-发送.png" width="18" height="18" alt="发送" />
+              <img src="@/assets/Agent发送.png" width="18" height="18" alt="发送" />
             </button>
           </div>
         </div>
@@ -212,6 +212,7 @@ const inputMessage = ref('')
 const isInputFocused = ref(false)
 const copiedIndex = ref(-1)
 const showScrollDown = ref(false)
+const selectedModel = ref('') // 从首页传过来的模型选择
 
 const scrollContainer = ref(null)
 const messagesEnd = ref(null)
@@ -256,7 +257,7 @@ const sendMessage = () => {
   if (eventSource) eventSource.close()
 
   connectionStatus.value = 'connecting'
-  eventSource = chatWithResearchAgent(text)
+  eventSource = chatWithResearchAgent(text, selectedModel.value || undefined)
 
   eventSource.onmessage = (event) => {
     const data = event.data
@@ -352,6 +353,13 @@ const handleNewChat = () => {
 
 // ── 生命周期 ──────────────────────────────────────────────
 onMounted(() => {
+  // 读取首页带过来的模型选择
+  const initModel = sessionStorage.getItem('initModel')
+  if (initModel) {
+    selectedModel.value = initModel
+    sessionStorage.removeItem('initModel')
+  }
+
   // 读取首页带过来的初始问题
   const initQuestion = sessionStorage.getItem('initQuestion')
   sessionStorage.removeItem('initQuestion')
@@ -660,7 +668,6 @@ onBeforeUnmount(() => {
 }
 .send-btn.send-active {
   background: #8b5cf6; color: white; cursor: pointer;
-  box-shadow: 0 4px 12px rgba(139, 92, 246, 0.30);
 }
 /* 有输入时图标变白色（亮色） */
 .send-btn.send-active img {
