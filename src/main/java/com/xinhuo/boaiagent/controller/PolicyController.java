@@ -2,12 +2,16 @@ package com.xinhuo.boaiagent.controller;
 
 import com.xinhuo.boaiagent.agent.ResearchAgent;
 import com.xinhuo.boaiagent.app.PolicyApp;
+import com.xinhuo.boaiagent.security.guard.InputGuard;
+import com.xinhuo.boaiagent.security.guard.InputGuardResult;
 import jakarta.annotation.Resource;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.ai.chat.model.ChatModel;
 import org.springframework.ai.tool.ToolCallback;
 import org.springframework.core.io.UrlResource;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.ResponseEntity;
+import org.springframework.lang.Nullable;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -20,6 +24,7 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.Map;
+import java.util.UUID;
 
 /**
  * AI 接口控制器
@@ -28,6 +33,7 @@ import java.util.Map;
  */
 @RestController
 @RequestMapping("/ai")
+@Slf4j
 public class PolicyController {
 
     @Resource
@@ -41,6 +47,10 @@ public class PolicyController {
 
     @Resource
     private Map<String, ChatModel> modelRoute;
+
+    @Resource(name = "inputGuard")
+    @Nullable
+    private InputGuard inputGuard;
 
     /**
      * 根据参数选择 ChatModel，找不到则 fallback 到 DashScope
@@ -62,7 +72,20 @@ public class PolicyController {
      */
     @GetMapping(value = "/policy_app/chat/sse")
         public SseEmitter doChatWithPolicyAppBySse(String message, String chatId, String model) {
+        // chatId 为空时自动生成，避免所有请求共用 "chat:memory:null"
+        if (chatId == null || chatId.isBlank()) {
+            chatId = UUID.randomUUID().toString();
+        }
+        log.debug("Policy chat: chatId={}", chatId);
         SseEmitter sseEmitter = new SseEmitter(180_000L); // 3 分钟超时
+
+        // 安全防护检查
+        InputGuardResult guardResult = checkSecurity(message);
+        if (guardResult.isBlocked()) {
+            sendBlockMessage(sseEmitter, guardResult.getMessage());
+            return sseEmitter;
+        }
+
         ChatModel selectedModel = resolveModel(model);
 
         // 支持动态切换模型
@@ -88,6 +111,16 @@ public class PolicyController {
      */
     @GetMapping("/research/chat")
     public SseEmitter doChatWithResearchAgent(String message, String model) {
+        SseEmitter sseEmitter = new SseEmitter(0L);
+
+        // 安全防护检查
+        InputGuardResult guardResult = checkSecurity(message);
+        if (guardResult.isBlocked()) {
+            String blockJson = "{\"type\":\"error\",\"message\":\"" + guardResult.getMessage() + "\"}";
+            sendBlockMessage(sseEmitter, blockJson);
+            return sseEmitter;
+        }
+
         ChatModel selectedModel = resolveModel(model);
         ResearchAgent researchAgent = new ResearchAgent(allTools, selectedModel);
         return researchAgent.runStream(message);
@@ -151,4 +184,29 @@ public class PolicyController {
 //        ResearchAgent researchAgent = new ResearchAgent(allTools, dashscopeChatModel);
 //        return researchAgent.runStream(message);
 //    }
+
+    // ==================== 安全防护辅助方法 ====================
+
+    /**
+     * 执行安全检查，guard 未启用时直接返回安全结果
+     */
+    private InputGuardResult checkSecurity(String message) {
+        if (inputGuard == null) {
+            return InputGuardResult.safe();
+        }
+        return inputGuard.check(message);
+    }
+
+    /**
+     * 通过 SSE 发送安全拦截消息并关闭连接
+     */
+    private void sendBlockMessage(SseEmitter sseEmitter, String message) {
+        try {
+            sseEmitter.send(message);
+            sseEmitter.complete();
+        } catch (IOException e) {
+            log.warn("Failed to send block message via SSE", e);
+            sseEmitter.completeWithError(e);
+        }
+    }
 }
