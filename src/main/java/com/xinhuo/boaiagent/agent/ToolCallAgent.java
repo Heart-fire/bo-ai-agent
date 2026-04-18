@@ -69,15 +69,52 @@ public class ToolCallAgent extends ReActAgent {
     }
 
     /**
+     * 构建动态步骤提示词，包含当前进度和已用工具信息
+     * 解决：静态提示词导致模型重复搜索、无法感知阶段进展
+     */
+    private String buildDynamicStepPrompt() {
+        String basePrompt = getNextStepPrompt();
+        if (StrUtil.isBlank(basePrompt)) {
+            return null;
+        }
+
+        StringBuilder sb = new StringBuilder();
+        sb.append("【当前进度】步骤 ").append(getCurrentStep()).append("/").append(getMaxSteps());
+
+        // 告知已使用的工具，避免重复调用
+        if (!usedTools.isEmpty()) {
+            sb.append("，已调用工具：").append(String.join("、", usedTools));
+        }
+
+        // 告知剩余步骤，引导模型合理规划
+        int remaining = getMaxSteps() - getCurrentStep();
+        sb.append("，剩余 ").append(remaining).append(" 步。\n\n");
+
+        // 关键：如果已经搜索过，明确告知不要再重复搜索
+        boolean hasSearched = usedTools.contains("webSearch") || usedTools.contains("webSearchAdvanced");
+        boolean hasPdf = usedTools.contains("generatePDF");
+        if (hasSearched && !hasPdf) {
+            sb.append("【重要】你已经完成了信息搜索，请直接根据搜索结果调用 generatePDF 生成研究报告，不要再重复搜索。\n\n");
+        }
+        if (hasPdf) {
+            sb.append("【重要】报告已生成，请立即调用 doTerminate 结束任务。\n\n");
+        }
+
+        sb.append(basePrompt);
+        return sb.toString();
+    }
+
+    /**
      * 处理当前状态并决定下一步行动
      *
      * @return 是否需要执行行动
      */
     @Override
     public boolean think() {
-        // 1、校验提示词，拼接用户提示词
-        if (StrUtil.isNotBlank(getNextStepPrompt())) {
-            UserMessage userMessage = new UserMessage(getNextStepPrompt());
+        // 1、构建动态步骤提示词（包含进度和已用工具信息）
+        String dynamicPrompt = buildDynamicStepPrompt();
+        if (StrUtil.isNotBlank(dynamicPrompt)) {
+            UserMessage userMessage = new UserMessage(dynamicPrompt);
             getMessageList().add(userMessage);
         }
         // 2、调用 AI 大模型，获取工具调用结果
@@ -303,7 +340,6 @@ public class ToolCallAgent extends ReActAgent {
     /**
      * 流式输出总结文本：使用 ChatClient 流式调用 LLM，逐 token 推送 SSE 事件
      */
-    // TODO 优化
     @Override
     protected void streamSummary(org.springframework.web.servlet.mvc.method.annotation.SseEmitter emitter,
                                   List<String> results) {

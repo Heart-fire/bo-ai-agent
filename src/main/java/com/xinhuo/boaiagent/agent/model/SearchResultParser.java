@@ -1,6 +1,9 @@
 package com.xinhuo.boaiagent.agent.model;
 
 import cn.hutool.core.util.StrUtil;
+import cn.hutool.json.JSONArray;
+import cn.hutool.json.JSONObject;
+import cn.hutool.json.JSONUtil;
 import lombok.Builder;
 import lombok.Data;
 import lombok.extern.slf4j.Slf4j;
@@ -35,9 +38,9 @@ public class SearchResultParser {
     );
 
     /**
-     * 解析搜索结果为卡片列表
+     * 解析搜索结果为卡片列表（自动检测格式）
      *
-     * @param searchResult 搜索返回的原始文本
+     * @param searchResult 搜索返回的原始文本或结构化 JSON
      * @return 卡片列表
      */
     public static List<DisplayCard> parseToCards(String searchResult) {
@@ -46,6 +49,101 @@ public class SearchResultParser {
         if (StrUtil.isBlank(searchResult)) {
             return cards;
         }
+
+        String trimmed = searchResult.trim();
+
+        // 优先检测是否为结构化 JSON 数组格式（WebSearchTool 返回的 List<SearchResult>）
+        if (trimmed.startsWith("[")) {
+            try {
+                JSONArray jsonArray = JSONUtil.parseArray(trimmed);
+                return parseStructuredJson(jsonArray);
+            } catch (Exception e) {
+                log.debug("JSON 数组解析失败，降级为文本解析: {}", e.getMessage());
+                // 降级为文本解析
+            }
+        }
+
+        // 检测是否为单条 JSON 对象（部分工具可能返回单条）
+        if (trimmed.startsWith("{")) {
+            try {
+                JSONObject jsonObj = JSONUtil.parseObj(trimmed);
+                JSONArray jsonArray = new JSONArray();
+                jsonArray.add(jsonObj);
+                return parseStructuredJson(jsonArray);
+            } catch (Exception e) {
+                log.debug("JSON 对象解析失败，降级为文本解析: {}", e.getMessage());
+            }
+        }
+
+        // 降级：自由文本正则解析
+        return parseFreeTextCards(searchResult);
+    }
+
+    /**
+     * 解析结构化 JSON 数组为卡片列表
+     * 适配 WebSearchTool 返回的 List<SearchResult> JSON 格式
+     */
+    private static List<DisplayCard> parseStructuredJson(JSONArray jsonArray) {
+        List<DisplayCard> cards = new ArrayList<>();
+
+        for (int i = 0; i < jsonArray.size(); i++) {
+            JSONObject item = jsonArray.getJSONObject(i);
+            if (item == null) continue;
+
+            String title = item.getStr("title", "");
+            String content = item.getStr("content", "");
+            String link = item.getStr("link", "");
+            String publishDate = item.getStr("publish_date", "");
+            String media = item.getStr("media", "");
+
+            // 构建链接列表
+            List<LinkItem> links = new ArrayList<>();
+            if (StrUtil.isNotBlank(link)) {
+                links.add(LinkItem.builder()
+                        .url(link)
+                        .title(StrUtil.isNotBlank(media) ? media : "来源链接")
+                        .build());
+            }
+
+            // 构建描述（内容 + 日期）
+            StringBuilder desc = new StringBuilder();
+            if (StrUtil.isNotBlank(content)) {
+                desc.append(content);
+            }
+            if (StrUtil.isNotBlank(publishDate)) {
+                desc.append("\n发布日期：").append(publishDate);
+            }
+
+            // 构建标签
+            List<String> tags = new ArrayList<>();
+            if (StrUtil.isNotBlank(media)) {
+                tags.add(media);
+            }
+            if (StrUtil.isNotBlank(publishDate)) {
+                tags.add(publishDate);
+            }
+
+            DisplayCard card = DisplayCard.builder()
+                    .title(title)
+                    .description(desc.toString().trim())
+                    .links(links)
+                    .tags(tags)
+                    .build();
+
+            if (StrUtil.isNotBlank(card.getTitle())) {
+                cards.add(card);
+            }
+        }
+
+        log.info("结构化 JSON 解析完成，共 {} 条卡片", cards.size());
+        return cards;
+    }
+
+    /**
+     * 自由文本正则解析（兼容旧格式）
+     */
+    private static List<DisplayCard> parseFreeTextCards(String searchResult) {
+        List<DisplayCard> cards = new ArrayList<>();
 
         // 方法1: 按 【数字】 分割
         List<String> sections = splitByNumberedBrackets(searchResult);

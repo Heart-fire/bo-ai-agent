@@ -5,11 +5,16 @@ import cn.hutool.json.JSONUtil;
 import com.xinhuo.boaiagent.constant.BigModelConstant;
 import com.xinhuo.boaiagent.tools.dto.BigModelWebSearchRequest;
 import com.xinhuo.boaiagent.tools.dto.BigModelWebSearchResponse;
+import com.xinhuo.boaiagent.tools.dto.SearchResult;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.ai.tool.annotation.Tool;
 import org.springframework.ai.tool.annotation.ToolParam;
 import org.springframework.stereotype.Component;
+
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
 
 /**
  * 网页搜索工具类
@@ -28,7 +33,7 @@ public class WebSearchTool {
      */
     @Tool(description = "Web search, searching for information on the Internet")
     public String webSearch(@ToolParam(description = "Search keywords") String searchQuery) {
-        return webSearchAdvanced(searchQuery, 2, null, null);
+        return webSearchAdvanced(searchQuery, 5, null, null);
     }
 
 
@@ -52,7 +57,7 @@ public class WebSearchTool {
                     .search_query(searchQuery)
                     .search_engine("search_pro_sogou") // 搜狗搜索
                     .search_intent(false)
-                    .count(count != null ? count : 2)
+                    .count(count != null ? count : 5)
                     .search_domain_filter(domainFilter)
                     .search_recency_filter(recencyFilter != null ? recencyFilter : "noLimit")
                     .content_size("medium")
@@ -69,7 +74,7 @@ public class WebSearchTool {
             BigModelWebSearchResponse response = JSONUtil.toBean(responseBody, BigModelWebSearchResponse.class);
 
             // 格式化输出搜索结果
-            return formatSearchResult(response);
+            return JSONUtil.toJsonStr(formatSearchResult(response, count));
 
         } catch (Exception e) {
             log.error("网页搜索失败", e);
@@ -77,43 +82,64 @@ public class WebSearchTool {
         }
     }
 
+
     /**
      * 格式化搜索结果（简洁格式，用于 LLM 总结）
      */
-    private String formatSearchResult(BigModelWebSearchResponse response) {
-        if (response == null || response.getSearch_result() == null || response.getSearch_result().isEmpty()) {
-            return "未找到相关结果";
+    private List<SearchResult> formatSearchResult(BigModelWebSearchResponse response, Integer count) {
+        if (response == null || response.getSearch_result() == null) {
+            return Collections.emptyList();
         }
 
-        StringBuilder sb = new StringBuilder();
-        sb.append("搜索结果：\n\n");
+        List<SearchResult> results = response.getSearch_result();
 
-        for (int i = 0; i < response.getSearch_result().size(); i++) {
-            BigModelWebSearchResponse.SearchResult result = response.getSearch_result().get(i);
-            String title = cleanText(result.getTitle());
-            String link = cleanText(result.getLink());
-            sb.append("【").append(i + 1).append("】").append(title).append("\n");
-            sb.append("链接：").append(link).append("\n");
-            if (result.getContent() != null && !result.getContent().isEmpty()) {
-                String content = cleanText(result.getContent());
-                if (content.length() > 50) {
-                    content = content.substring(0, 50) + "...";
-                }
-                sb.append("摘要：").append(content).append("\n");
-            }
-            sb.append("\n");
+        // 排序
+        results.sort((o1, o2) -> {
+            String d1 = o1.getPublish_date();
+            String d2 = o2.getPublish_date();
+            if (d1 == null) return 1;
+            if (d2 == null) return -1;
+            return d2.compareTo(d1);
+        });
+
+        int limit = Math.min(count != null ? count : 5, results.size());
+
+        List<SearchResult> list = new ArrayList<>();
+
+        for (int i = 0; i < limit; i++) {
+            SearchResult r = results.get(i);
+
+            SearchResult dto = new SearchResult();
+            dto.setTitle(cleanText(r.getTitle()));
+            dto.setLink(cleanText(r.getLink()));
+            dto.setContent(cleanText(r.getContent()));
+            dto.setPublish_date(r.getPublish_date());
+
+            list.add(dto);
         }
 
-        return sb.toString();
+        return list;
     }
 
     /**
-     * 清理文本中的换行符和多余空白
+     * 清理文本，去除换行、多余空白、常见gov网站噪音
      */
     private String cleanText(String text) {
         if (text == null || text.isEmpty()) {
             return "";
         }
-        return text.replaceAll("[\\r\\n]+", " ").replaceAll("\\s+", " ").trim();
+
+        // 1. 去换行
+        text = text.replaceAll("[\\r\\n]+", " ");
+
+        // 2. 去多余空白
+        text = text.replaceAll("\\s+", " ").trim();
+
+        // 3. 过滤政务网站常见噪音
+        text = text.replaceAll("我在听.*?再说一遍吧", "");
+        text = text.replaceAll("切换区域", "");
+        text = text.replaceAll("切换简洁版", "");
+
+        return text.trim();
     }
 }

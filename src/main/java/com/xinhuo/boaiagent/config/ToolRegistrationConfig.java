@@ -1,5 +1,6 @@
-package com.xinhuo.boaiagent.tools;
+package com.xinhuo.boaiagent.config;
 
+import com.xinhuo.boaiagent.tools.*;
 import jakarta.annotation.Resource;
 import org.springframework.ai.support.ToolCallbacks;
 import org.springframework.ai.tool.ToolCallback;
@@ -10,13 +11,13 @@ import org.springframework.context.annotation.Configuration;
  * 集中的工具注册类
  */
 @Configuration
-public class ToolRegistration {
+public class ToolRegistrationConfig {
 
     @Resource
     private WebSearchTool webSearchTool;
 
     @Resource
-    private FileOperationTool  fileOperationTool;
+    private FileOperationTool fileOperationTool;
 
     @Resource
     private WebScrapingTool webScrapingTool;
