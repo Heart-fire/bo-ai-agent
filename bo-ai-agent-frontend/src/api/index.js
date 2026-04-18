@@ -44,12 +44,12 @@ export const connectSSE = (url, params, onMessage, onError) => {
   return eventSource
 }
 
-// 获取或生成持久化 chatId（存 localStorage）
+// 获取或生成会话级 chatId（存 sessionStorage，关闭标签页自动清除）
 export const getPersistentChatId = () => {
-  let chatId = localStorage.getItem('chatId')
+  let chatId = sessionStorage.getItem('chatId')
   if (!chatId) {
     chatId = crypto.randomUUID ? crypto.randomUUID() : 'chat_' + Math.random().toString(36).substring(2, 18)
-    localStorage.setItem('chatId', chatId)
+    sessionStorage.setItem('chatId', chatId)
   }
   return chatId
 }

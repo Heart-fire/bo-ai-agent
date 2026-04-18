@@ -11,7 +11,7 @@
     <header class="top-bar">
       <div class="top-bar-left">
         <div class="brand-icon">
-          <img src="/政策通知.png" width="25" height="25" alt="政策通" />
+          <img src="/政策指南针.png" width="25" height="25" alt="政策通" />
         </div>
         <span class="brand-name">政策通</span>
         <span class="divider">/</span>
@@ -56,10 +56,7 @@
           <div v-if="msg.isUser" class="row-user">
             <div class="user-bubble">{{ msg.content }}</div>
             <div class="user-avatar">
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
-                <circle cx="12" cy="7" r="4"/>
-              </svg>
+              <img src="@/assets/Chat用户.png" width="15" height="15" alt="用户" />
             </div>
           </div>
 
@@ -189,7 +186,14 @@
 import { ref, onMounted, onBeforeUnmount, nextTick } from 'vue'
 import { useRouter } from 'vue-router'
 import { useHead } from '@vueuse/head'
+import { marked } from 'marked'
 import { chatWithPolicyApp, getPersistentChatId } from '../api'
+
+// ── 配置 marked ────────────────────────────────────────────
+marked.setOptions({
+  breaks: true,
+  gfm: true,
+})
 
 useHead({
   title: '政策问答 - 北京政策智能助手平台',
@@ -322,80 +326,46 @@ const handleNewChat = () => {
   if (eventSource) eventSource.close()
   messages.value = []
   connectionStatus.value = 'disconnected'
-  localStorage.removeItem('chatId')
+  sessionStorage.removeItem('chatId')
   chatId.value = getPersistentChatId()
   addMessage('您好！我是北京政策问答助手，可以帮您解答社保、交通、积分落户等政策问题。请问有什么可以帮您？', false)
+}
+
+// ── Markdown 预处理（修复 AI 输出的常见格式问题）─────────
+const preprocessMarkdown = (text) => {
+  if (!text) return ''
+  let md = text
+
+  // 修复错位的粗体标记：*文本** → **文本**
+  // AI 常输出 *方式1：通过"北京交警"APP**，实际意图是 **方式1：通过"北京交警"APP**
+  md = md.replace(/^\*([^*\n]+\S)\*\*\s*$/gm, '**$1**')
+
+  // 修复行首缺少空格的列表标记（中英文混排常见）
+  md = md.replace(/^([-*])\s*(?=[^\s])/gm, '$1 ')
+  md = md.replace(/^(\d+\.)\s*(?=[^\s\d])/gm, '$1 ')
+
+  // 修复行首缺少空格的标题标记（###标题 → ### 标题）
+  md = md.replace(/^(#{1,6})\s*(?=[^\s#])/gm, '$1 ')
+
+  // 修复引用块缺少空格（>text → > text）
+  md = md.replace(/^>\s*(?=[^\s>])/gm, '> ')
+
+  return md
 }
 
 // ── Markdown 渲染 ─────────────────────────────────────────
 const renderMarkdown = (text) => {
   if (!text) return ''
-  let html = text
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-
-  // 代码块
-  html = html.replace(/```[\s\S]*?```/g, (match) => {
-    const code = match.replace(/^```[^\n]*\n?/, '').replace(/```$/, '')
-    return `<pre class="md-code"><code>${code}</code></pre>`
-  })
-
-  // 表格
-  html = html.replace(/(\|.+\|[\r\n]+\|[-| :]+\|[\r\n]+((\|.+\|[\r\n]*)+))/g, (match) => {
-    const lines = match.trim().split('\n')
-    const headers = lines[0].split('|').filter(s => s.trim()).map(h => `<th>${h.trim()}</th>`).join('')
-    const rows = lines.slice(2).map(row => {
-      const cells = row.split('|').filter(s => s.trim()).map(c => `<td>${c.trim()}</td>`).join('')
-      return `<tr>${cells}</tr>`
-    }).join('')
-    return `<div class="md-table-wrap"><table class="md-table"><thead><tr>${headers}</tr></thead><tbody>${rows}</tbody></table></div>`
-  })
-
-  // 水平线
-  html = html.replace(/^---$/gm, '<hr class="md-hr"/>')
-
-  // 引用块（兼容无空格：>text 或 > text）
-  html = html.replace(/^&gt;\s*(.+)$/gm, '<blockquote class="md-blockquote">$1</blockquote>')
-
-  // 标题（兼容无空格：###标题 或 ### 标题）
-  html = html.replace(/^###\s*(.+)$/gm, '<h4 class="md-h3">$1</h4>')
-  html = html.replace(/^##\s*(.+)$/gm,  '<h3 class="md-h2">$1</h3>')
-  html = html.replace(/^#\s*(.+)$/gm,   '<h2 class="md-h1">$1</h2>')
-
-  // Checklist
-  html = html.replace(/^- \[x\] (.+)$/gm, '<li class="md-check checked">✓ $1</li>')
-  html = html.replace(/^- \[ \] (.+)$/gm, '<li class="md-check">○ $1</li>')
-
-  // 无序列表（兼容无空格）
-  html = html.replace(/^[-*•]\s*(.+)$/gm, '<li class="md-li">$1</li>')
-  html = html.replace(/(<li class="md-li">.*<\/li>\n?)+/g, m => `<ul class="md-ul">${m}</ul>`)
-
-  // 有序列表（兼容无空格：1.文本 或 1. 文本）
-  html = html.replace(/^\d+\.\s*(.+)$/gm, '<li class="md-oli">$1</li>')
-  html = html.replace(/(<li class="md-oli">.*<\/li>\n?)+/g, m => `<ol class="md-ol">${m}</ol>`)
-
-  // 粗体 & 内联代码
-  html = html.replace(/\*\*(.+?)\*\*/g, '<strong class="md-bold">$1</strong>')
-  html = html.replace(/`([^`]+)`/g, '<code class="md-inline-code">$1</code>')
-
-  // 链接 [text](url)
-  html = html.replace(/\[([^\]]+)\]\(([^)]+)\)/g,
-    '<a class="md-link" href="$2" target="_blank" rel="noopener noreferrer">$1</a>')
-
-  // 自动链接（裸 URL）
-  html = html.replace(/(?<!href=")https?:\/\/[^\s<>)\]]+/g,
-    '<a class="md-link" href="$&" target="_blank" rel="noopener noreferrer">$&</a>')
-
-  // 段落
-  html = html.replace(/\n\n/g, '</p><p class="md-p">')
-  html = html.replace(/\n/g, '<br/>')
-  html = `<p class="md-p">${html}</p>`
-
-  html = html.replace(/<p class="md-p"><(h[1-4]|ul|ol|pre|blockquote|hr|div)/g, '<$1')
-  html = html.replace(/<\/(h[1-4]|ul|ol|pre|blockquote|div)><\/p>/g, '</$1>')
-
-  return html
+  try {
+    return marked.parse(preprocessMarkdown(text))
+  } catch {
+    // marked 解析失败时做基本转义
+    return text
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/\n/g, '<br/>')
+  }
 }
 
 // ── 生命周期 ──────────────────────────────────────────────
@@ -746,82 +716,87 @@ onBeforeUnmount(() => {
 }
 .regen-btn:hover { background: #f1f5f9; color: #475569; }
 
-/* ── Markdown 渲染（浅色） ── */
-.markdown-body :deep(.md-h1) {
+/* ── Markdown 渲染（浅色，基于 marked 标准输出） ── */
+.markdown-body :deep(h1) {
   font-size: 1.15rem; font-weight: 700; color: #0f172a;
   margin: 16px 0 8px;
 }
-.markdown-body :deep(.md-h2) {
+.markdown-body :deep(h2) {
   font-size: 1rem; font-weight: 600; color: #1e293b;
   margin: 20px 0 8px; padding-bottom: 6px;
   border-bottom: 1px solid #e2e8f0;
 }
-.markdown-body :deep(.md-h3) {
+.markdown-body :deep(h3) {
   font-size: 0.9rem; font-weight: 600; color: #334155;
   margin: 12px 0 6px;
 }
-.markdown-body :deep(.md-p) {
+.markdown-body :deep(h4) {
+  font-size: 0.87rem; font-weight: 600; color: #475569;
+  margin: 10px 0 4px;
+}
+.markdown-body :deep(p) {
   margin: 4px 0; color: #475569;
   font-size: 0.87rem; line-height: 1.7;
 }
-.markdown-body :deep(.md-bold) { color: #0f172a; font-weight: 600; }
-.markdown-body :deep(.md-inline-code) {
+.markdown-body :deep(strong) { color: #0f172a; font-weight: 600; }
+.markdown-body :deep(em) { font-style: italic; color: #475569; }
+.markdown-body :deep(code) {
   padding: 2px 6px; border-radius: 4px;
   background: #fef2f2; color: #b91c1c;
   border: 1px solid #fecaca;
   font-size: 0.82rem; font-family: 'Fira Code', Consolas, monospace;
 }
-.markdown-body :deep(.md-code) {
+.markdown-body :deep(pre) {
   margin: 10px 0; padding: 16px; border-radius: 10px;
   background: #f8fafc; border: 1px solid #e2e8f0;
-  color: #334155; font-size: 0.8rem; overflow-x: auto; line-height: 1.6;
-  font-family: 'Fira Code', Consolas, monospace;
+  overflow-x: auto; line-height: 1.6;
+  font-size: 0.8rem; font-family: 'Fira Code', Consolas, monospace;
 }
-.markdown-body :deep(.md-blockquote) {
+.markdown-body :deep(pre code) {
+  padding: 0; border: none; background: none; color: #334155;
+  font-size: inherit;
+}
+.markdown-body :deep(blockquote) {
   margin: 10px 0; padding: 12px 16px;
   border-left: 3px solid #f59e0b;
   background: rgba(251,191,36,0.06);
   border-radius: 0 10px 10px 0;
   color: #64748b; font-size: 0.85rem;
 }
-.markdown-body :deep(.md-ul),
-.markdown-body :deep(.md-ol)  { margin: 6px 0; padding-left: 20px; }
-.markdown-body :deep(.md-li),
-.markdown-body :deep(.md-oli) { color: #475569; font-size: 0.87rem; line-height: 1.7; margin-bottom: 4px; }
-.markdown-body :deep(.md-check) {
-  list-style: none; color: #94a3b8;
-  font-size: 0.87rem; margin-left: -20px; padding-left: 4px; margin-bottom: 4px;
-}
-.markdown-body :deep(.md-check.checked) { color: #16a34a; }
-.markdown-body :deep(.md-link) {
+.markdown-body :deep(blockquote p) { color: inherit; font-size: inherit; }
+.markdown-body :deep(ul),
+.markdown-body :deep(ol) { margin: 6px 0; padding-left: 20px; }
+.markdown-body :deep(li) { color: #475569; font-size: 0.87rem; line-height: 1.7; margin-bottom: 4px; }
+.markdown-body :deep(li input[type="checkbox"]) { margin-right: 6px; }
+.markdown-body :deep(a) {
   color: #ef4444; text-decoration: none;
   border-bottom: 1px solid rgba(239,68,68,0.3);
   transition: border-color 0.15s, color 0.15s;
 }
-.markdown-body :deep(.md-link:hover) {
+.markdown-body :deep(a:hover) {
   color: #dc2626; border-bottom-color: #dc2626;
 }
-.markdown-body :deep(.md-hr) {
+.markdown-body :deep(hr) {
   border: none; border-top: 1px solid #e2e8f0; margin: 16px 0;
 }
-.markdown-body :deep(.md-table-wrap) {
-  margin: 12px 0; overflow-x: auto;
-  border-radius: 10px; border: 1px solid #e2e8f0;
+.markdown-body :deep(table) {
+  width: 100%; border-collapse: collapse; font-size: 0.82rem;
+  margin: 12px 0; border-radius: 10px; border: 1px solid #e2e8f0;
   box-shadow: 0 1px 4px rgba(0,0,0,0.04);
+  overflow: hidden;
 }
-.markdown-body :deep(.md-table) { width: 100%; border-collapse: collapse; font-size: 0.82rem; }
-.markdown-body :deep(.md-table th) {
+.markdown-body :deep(thead) { background: #f8fafc; }
+.markdown-body :deep(th) {
   padding: 10px 16px; text-align: left;
-  background: #f8fafc;
   color: #475569; font-weight: 600;
   border-bottom: 1px solid #e2e8f0;
 }
-.markdown-body :deep(.md-table td) {
+.markdown-body :deep(td) {
   padding: 9px 16px; color: #64748b;
   border-bottom: 1px solid #f1f5f9;
 }
-.markdown-body :deep(.md-table tr:last-child td) { border-bottom: none; }
-.markdown-body :deep(.md-table tr:hover td) { background: rgba(239,68,68,0.025); }
+.markdown-body :deep(tr:last-child td) { border-bottom: none; }
+.markdown-body :deep(tbody tr:hover td) { background: rgba(239,68,68,0.025); }
 
 /* ── 响应式 ── */
 @media (max-width: 768px) {

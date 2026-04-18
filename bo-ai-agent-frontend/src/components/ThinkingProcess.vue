@@ -29,6 +29,7 @@
           >
             <div class="step-dot"></div>
             <span class="step-text">{{ step.label }}</span>
+            <span class="step-status">调用成功</span>
           </div>
         </div>
       </div>
@@ -40,7 +41,7 @@
       <span v-if="!isDone" class="typing-cursor">|</span>
     </div>
 
-    <!-- 3. 最终结果：结构化摘要（结论 + 信息卡片 + PDF 下载） -->
+    <!-- 3. 最终结果：结构化摘要（结论 + 信息卡片 + 参考链接 + PDF 下载） -->
     <div v-if="summary" class="summary-section">
       <!-- PDF download button -->
       <div v-if="pdfUrl" class="pdf-download">
@@ -62,6 +63,34 @@
           :compact="true"
         />
       </div>
+      <!-- 参考链接汇总 -->
+      <div v-if="referenceLinks.length" class="reference-links">
+        <div class="ref-links-title">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/>
+            <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/>
+          </svg>
+          参考链接
+        </div>
+        <div class="ref-links-list">
+          <a
+            v-for="(link, idx) in referenceLinks"
+            :key="`ref-${idx}`"
+            :href="link.url"
+            target="_blank"
+            rel="noopener noreferrer"
+            class="ref-link-item"
+          >
+            <span class="ref-link-index">{{ idx + 1 }}</span>
+            <span class="ref-link-title">{{ link.title }}</span>
+            <span class="ref-link-url">{{ link.url }}</span>
+            <svg class="ref-link-arrow" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <line x1="7" y1="17" x2="17" y2="7"/>
+              <polyline points="7 7 17 7 17 17"/>
+            </svg>
+          </a>
+        </div>
+      </div>
     </div>
 
   </div>
@@ -69,7 +98,14 @@
 
 <script setup>
 import { ref, computed, watch } from 'vue'
+import { marked } from 'marked'
 import InfoCard from './InfoCard.vue'
+
+// ── 配置 marked ────────────────────────────────────────────
+marked.setOptions({
+  breaks: true,
+  gfm: true,
+})
 
 const props = defineProps({
   steps: {
@@ -112,21 +148,21 @@ const statusText = computed(() => {
   return '思考中...'
 })
 
-// Tool name -> natural language mapping
-const toolDescriptions = {
-  webSearchAdvanced: '正在搜索相关信息',
-  webSearch: '正在搜索信息',
-  search: '正在搜索',
-  webScraping: '正在抓取网页内容',
-  resourceDownload: '正在下载资源',
-  writeFile: '正在整理结果',
-  generatePDF: '正在生成报告',
-  imageSearch: '正在搜索图片',
-  doTerminate: '正在总结'
+// Tool name -> display label mapping
+const toolLabels = {
+  webSearchAdvanced: '调用政策通网页搜索工具',
+  webSearch: '搜索',
+  search: '搜索',
+  webScraping: '网页抓取',
+  resourceDownload: '资源下载',
+  writeFile: '整理结果',
+  generatePDF: '生成报告',
+  imageSearch: '图片搜索',
+  doTerminate: '已完成'
 }
 
 const getToolLabel = (toolName) => {
-  return toolDescriptions[toolName] || '正在处理'
+  return toolLabels[toolName] || toolName
 }
 
 // Extract PDF download URL from generatePDF tool results
@@ -163,6 +199,24 @@ const downloadPdf = () => {
   document.body.removeChild(link)
 }
 
+// Collect all unique reference links from summary cards
+const referenceLinks = computed(() => {
+  if (!props.summary?.cards) return []
+  const seen = new Set()
+  const links = []
+  for (const card of props.summary.cards) {
+    if (card.links?.length) {
+      for (const link of card.links) {
+        if (link.url && !seen.has(link.url)) {
+          seen.add(link.url)
+          links.push({ url: link.url, title: link.title || card.title || '参考链接' })
+        }
+      }
+    }
+  }
+  return links
+})
+
 // Build merged display steps from thoughts + actions
 const displaySteps = computed(() => {
   const result = []
@@ -176,7 +230,8 @@ const displaySteps = computed(() => {
         if (toolName && !seenTools.has(toolName)) {
           seenTools.add(toolName)
           result.push({
-            label: toolName === 'generatePDF' ? '报告已生成' : getToolLabel(toolName),
+            label: getToolLabel(toolName),
+            toolName,
             done: true
           })
         }
@@ -186,16 +241,12 @@ const displaySteps = computed(() => {
       if (!seenTools.has(toolName)) {
         seenTools.add(toolName)
         result.push({
-          label: toolName === 'generatePDF' ? '报告已生成' : getToolLabel(toolName),
+          label: getToolLabel(toolName),
+          toolName,
           done: true
         })
       }
     }
-  }
-
-  // Limit to 5 steps
-  if (result.length > 5) {
-    return result.slice(0, 5)
   }
 
   return result
@@ -209,52 +260,32 @@ watch(() => props.isDone, (done) => {
   }
 })
 
-// 简易 Markdown 渲染（支持粗体、标题、列表、代码块、引用、换行）
+// ── Markdown 预处理（修复 AI 输出的常见格式问题）─────────
+const preprocessMarkdown = (text) => {
+  if (!text) return ''
+  let md = text
+  // 修复错位的粗体标记：*文本** → **文本**
+  md = md.replace(/^\*([^*\n]+\S)\*\*\s*$/gm, '**$1**')
+  // 修复行首缺少空格的列表/标题/引用标记
+  md = md.replace(/^([-*])\s*(?=[^\s])/gm, '$1 ')
+  md = md.replace(/^(\d+\.)\s*(?=[^\s\d])/gm, '$1 ')
+  md = md.replace(/^(#{1,6})\s*(?=[^\s#])/gm, '$1 ')
+  md = md.replace(/^>\s*(?=[^\s>])/gm, '> ')
+  return md
+}
+
+// ── Markdown 渲染（使用 marked）──────────────────────────────
 const renderMd = (text) => {
   if (!text) return ''
-  let html = text
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-
-  // 代码块
-  html = html.replace(/```[\s\S]*?```/g, (match) => {
-    const code = match.replace(/^```[^\n]*\n?/, '').replace(/```$/, '')
-    return `<pre class="md-code"><code>${code}</code></pre>`
-  })
-
-  // 标题
-  html = html.replace(/^### (.+)$/gm, '<h4 class="md-h3">$1</h4>')
-  html = html.replace(/^## (.+)$/gm,  '<h3 class="md-h2">$1</h3>')
-  html = html.replace(/^# (.+)$/gm,   '<h2 class="md-h1">$1</h2>')
-
-  // 引用块
-  html = html.replace(/^&gt; (.+)$/gm, '<blockquote class="md-blockquote">$1</blockquote>')
-
-  // 无序列表
-  html = html.replace(/^[-*•] (.+)$/gm, '<li class="md-li">$1</li>')
-  html = html.replace(/(<li class="md-li">.*<\/li>\n?)+/g, m => `<ul class="md-ul">${m}</ul>`)
-
-  // 有序列表
-  html = html.replace(/^\d+\. (.+)$/gm, '<li class="md-oli">$1</li>')
-  html = html.replace(/(<li class="md-oli">.*<\/li>\n?)+/g, m => `<ol class="md-ol">${m}</ol>`)
-
-  // 粗体
-  html = html.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
-
-  // 内联代码
-  html = html.replace(/`([^`]+)`/g, '<code class="md-inline-code">$1</code>')
-
-  // 段落 & 换行
-  html = html.replace(/\n\n/g, '</p><p>')
-  html = html.replace(/\n/g, '<br/>')
-  html = `<p>${html}</p>`
-
-  // 清理被 p 包裹的块级元素
-  html = html.replace(/<p><(h[2-4]|ul|ol|pre|blockquote)/g, '<$1')
-  html = html.replace(/<\/(h[2-4]|ul|ol|pre|blockquote)><\/p>/g, '</$1>')
-
-  return html
+  try {
+    return marked.parse(preprocessMarkdown(text))
+  } catch {
+    return text
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/\n/g, '<br/>')
+  }
 }
 </script>
 
@@ -287,6 +318,100 @@ const renderMd = (text) => {
 }
 
 /* ============================================
+   Reference links section
+   ============================================ */
+.reference-links {
+  margin-top: 16px;
+  padding: 14px 16px;
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 10px;
+}
+
+.ref-links-title {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+  font-weight: 600;
+  color: #334155;
+  margin-bottom: 10px;
+}
+
+.ref-links-title svg {
+  color: #6366f1;
+}
+
+.ref-links-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.ref-link-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 12px;
+  background: #fff;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  text-decoration: none;
+  transition: all 0.15s ease;
+}
+
+.ref-link-item:hover {
+  border-color: #a5b4fc;
+  background: #eff6ff;
+  transform: translateX(2px);
+}
+
+.ref-link-index {
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: #6366f1;
+  color: #fff;
+  font-size: 11px;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.ref-link-title {
+  font-size: 13px;
+  font-weight: 500;
+  color: #1e293b;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 280px;
+}
+
+.ref-link-url {
+  flex: 1;
+  font-size: 12px;
+  color: #94a3b8;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.ref-link-arrow {
+  color: #94a3b8;
+  flex-shrink: 0;
+  opacity: 0;
+  transition: opacity 0.15s ease;
+}
+
+.ref-link-item:hover .ref-link-arrow {
+  opacity: 1;
+  color: #6366f1;
+}
+
+/* ============================================
    Streaming summary text
    ============================================ */
 .streaming-summary {
@@ -301,7 +426,6 @@ const renderMd = (text) => {
   font-size: 15px;
   line-height: 1.8;
   color: #1a1a1a;
-  white-space: pre-wrap;
   word-break: break-word;
 }
 
@@ -310,37 +434,57 @@ const renderMd = (text) => {
   color: #0f172a;
 }
 
-.streaming-summary-text :deep(.md-h1) {
+.streaming-summary-text :deep(h1) {
   font-size: 1.15rem; font-weight: 700; color: #0f172a; margin: 12px 0 6px;
 }
-.streaming-summary-text :deep(.md-h2) {
+.streaming-summary-text :deep(h2) {
   font-size: 1rem; font-weight: 600; color: #1e293b; margin: 10px 0 6px;
 }
-.streaming-summary-text :deep(.md-h3) {
+.streaming-summary-text :deep(h3) {
   font-size: 0.92rem; font-weight: 600; color: #334155; margin: 8px 0 4px;
 }
-.streaming-summary-text :deep(.md-blockquote) {
+.streaming-summary-text :deep(h4) {
+  font-size: 0.88rem; font-weight: 600; color: #475569; margin: 6px 0 3px;
+}
+.streaming-summary-text :deep(p) {
+  margin: 4px 0; color: #475569; font-size: 0.9rem; line-height: 1.7;
+}
+.streaming-summary-text :deep(blockquote) {
   margin: 8px 0; padding: 8px 12px;
   border-left: 3px solid #0d9488;
   background: rgba(13,148,136,0.06);
   border-radius: 0 8px 8px 0;
   color: #475569; font-size: 0.87rem;
 }
-.streaming-summary-text :deep(.md-inline-code) {
+.streaming-summary-text :deep(blockquote p) { color: inherit; font-size: inherit; margin: 0; }
+.streaming-summary-text :deep(code) {
   padding: 2px 5px; border-radius: 4px;
   background: rgba(13,148,136,0.08); color: #0d9488;
   font-size: 0.85rem; font-family: 'Fira Code', Consolas, monospace;
 }
-.streaming-summary-text :deep(.md-code) {
+.streaming-summary-text :deep(pre) {
   margin: 8px 0; padding: 12px; border-radius: 8px;
   background: #f8fafc; border: 1px solid #e5e7eb;
-  color: #334155; font-size: 0.82rem; overflow-x: auto; line-height: 1.5;
-  font-family: 'Fira Code', Consolas, monospace;
+  overflow-x: auto; line-height: 1.5;
+  font-size: 0.82rem; font-family: 'Fira Code', Consolas, monospace;
 }
-.streaming-summary-text :deep(.md-ul),
-.streaming-summary-text :deep(.md-ol) { margin: 4px 0; padding-left: 18px; }
-.streaming-summary-text :deep(.md-li),
-.streaming-summary-text :deep(.md-oli) { color: #475569; font-size: 0.9rem; line-height: 1.7; margin-bottom: 2px; }
+.streaming-summary-text :deep(pre code) {
+  padding: 0; border: none; background: none; color: #334155; font-size: inherit;
+}
+.streaming-summary-text :deep(ul),
+.streaming-summary-text :deep(ol) { margin: 4px 0; padding-left: 18px; }
+.streaming-summary-text :deep(li) { color: #475569; font-size: 0.9rem; line-height: 1.7; margin-bottom: 2px; }
+.streaming-summary-text :deep(a) {
+  color: #0d9488; text-decoration: none;
+  border-bottom: 1px solid rgba(13,148,136,0.3);
+  transition: border-color 0.15s, color 0.15s;
+}
+.streaming-summary-text :deep(a:hover) {
+  color: #0f766e; border-bottom-color: #0f766e;
+}
+.streaming-summary-text :deep(hr) {
+  border: none; border-top: 1px solid #e5e7eb; margin: 12px 0;
+}
 
 .typing-cursor {
   display: inline-block;
@@ -359,6 +503,7 @@ const renderMd = (text) => {
    PDF download button
    ============================================ */
 .pdf-download {
+  margin-bottom: 16px;
   /* gap handles spacing */
 }
 
@@ -475,6 +620,15 @@ const renderMd = (text) => {
 
 .step-text {
   line-height: 1.4;
+  font-weight: 500;
+  color: #374151;
+}
+
+.step-status {
+  font-size: 12px;
+  color: #16a34a;
+  margin-left: auto;
+  flex-shrink: 0;
 }
 
 /* ============================================

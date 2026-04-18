@@ -2,7 +2,15 @@
   <div class="info-card" :class="{ compact }">
     <!-- 卡片头部 -->
     <div class="card-header">
-      <h4 class="card-title">{{ card.title }}</h4>
+      <h4 class="card-title">
+        <a v-if="card.links?.length === 1 && card.links[0].url"
+           :href="card.links[0].url"
+           target="_blank"
+           rel="noopener noreferrer"
+           class="card-title-link"
+        >{{ card.title }}</a>
+        <span v-else>{{ card.title }}</span>
+      </h4>
       <button
         v-if="card.address"
         class="copy-btn"
@@ -18,6 +26,11 @@
 
     <!-- 描述内容 -->
     <p class="card-description">{{ card.description }}</p>
+
+    <!-- 标签（来源、日期等） -->
+    <div v-if="card.tags?.length" class="card-tags">
+      <span v-for="(tag, idx) in card.tags" :key="idx" class="tag-item">{{ tag }}</span>
+    </div>
 
     <!-- 地址信息 -->
     <div v-if="card.address" class="address-row">
@@ -169,6 +182,17 @@ const openImage = (url) => {
   font-size: 14px;
 }
 
+.card-title-link {
+  color: inherit;
+  text-decoration: none;
+  transition: color 0.15s ease;
+}
+
+.card-title-link:hover {
+  color: #2563eb;
+  text-decoration: underline;
+}
+
 .copy-btn {
   width: 32px;
   height: 32px;
@@ -207,6 +231,32 @@ const openImage = (url) => {
 .info-card.compact .card-description {
   font-size: 13px;
   margin-bottom: 10px;
+}
+
+/* ============================================
+   标签
+   ============================================ */
+.card-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-bottom: 12px;
+}
+
+.tag-item {
+  display: inline-block;
+  padding: 2px 8px;
+  background: #f0f9ff;
+  color: #0369a1;
+  border-radius: 4px;
+  font-size: 12px;
+  font-weight: 500;
+  line-height: 1.5;
+}
+
+.info-card.compact .tag-item {
+  font-size: 11px;
+  padding: 1px 6px;
 }
 
 /* ============================================

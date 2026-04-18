@@ -41,7 +41,7 @@
       <div class="header-inner">
         <div class="brand">
           <div class="brand-icon">
-            <img src="/政策通知.png" width="27" height="27" alt="政策通" />
+            <img src="/政策指南针.png" width="27" height="27" alt="政策通" />
           </div>
           <span class="brand-name">政策通</span>
         </div>

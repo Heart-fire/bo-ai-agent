@@ -12,7 +12,7 @@
       <div class="top-bar-left">
         <div class="brand-icon">
           <div class="brand-icon">
-            <img src="/政策通知.png" width="25" height="25" alt="政策通" />
+            <img src="/政策指南针.png" width="25" height="25" alt="政策通" />
           </div>
         </div>
         <span class="brand-name">政策通</span>
@@ -62,10 +62,7 @@
           <div v-if="msg.isUser" class="message user-message">
             <div class="message-bubble user-bubble">{{ msg.content }}</div>
             <div class="user-avatar">
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
-                <circle cx="12" cy="7" r="4"/>
-              </svg>
+              <img src="@/assets/Agent用户.png" width="15" height="15" alt="用户" />
             </div>
           </div>
 
