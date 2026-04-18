@@ -28,11 +28,31 @@
     </scm>
     <properties>
         <java.version>21</java.version>
+        <spring-ai.version>1.1.2</spring-ai.version>
     </properties>
+    <dependencyManagement>
+        <dependencies>
+            <dependency>
+                <groupId>org.springframework.ai</groupId>
+                <artifactId>spring-ai-bom</artifactId>
+                <version>${spring-ai.version}</version>
+                <type>pom</type>
+                <scope>import</scope>
+            </dependency>
+        </dependencies>
+    </dependencyManagement>
+
     <dependencies>
         <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-web</artifactId>
+        </dependency>
+        <!-- PDF 创建库 -->
+        <dependency>
+            <groupId>com.itextpdf</groupId>
+            <artifactId>kernel</artifactId>
+            <version>9.5.0</version>
+            <scope>compile</scope>
         </dependency>
         <!-- 网页搜索工具 -->
         <dependency>
@@ -66,13 +86,9 @@
             <scope>test</scope>
         </dependency>
         <!-- Spring AI MCP Client -->
-        <!-- spring-ai-starter-mcp-client 提供Stdio 和基于HTTP的SSE支持-->
-        <!-- Source: https://mvnrepository.com/artifact/org.springframework.ai/spring-ai-starter-mcp-client -->
         <dependency>
             <groupId>org.springframework.ai</groupId>
             <artifactId>spring-ai-starter-mcp-client</artifactId>
-            <version>2.0.0-M2</version>
-            <scope>compile</scope>
         </dependency>
         <!-- jsoup HTML 解析库 -->
         <dependency>
@@ -109,26 +125,27 @@
             <artifactId>dashscope-sdk-java</artifactId>
             <version>2.19.1</version>
         </dependency>
+        <!-- deepseek -->
+        <dependency>
+            <groupId>org.springframework.ai</groupId>
+            <artifactId>spring-ai-starter-model-deepseek</artifactId>
+        </dependency>
         <!-- Spring AI Alibaba Agent Framework -->
         <dependency>
             <groupId>com.alibaba.cloud.ai</groupId>
             <artifactId>spring-ai-alibaba-agent-framework</artifactId>
             <version>1.1.0.0-RC2</version>
         </dependency>
-
-        <!-- DashScope ChatModel 支持（如果使用其他模型，请跳转 Spring AI 文档选择对应的 starter） -->
+        <!-- DashScope ChatModel -->
         <dependency>
             <groupId>com.alibaba.cloud.ai</groupId>
             <artifactId>spring-ai-alibaba-starter-dashscope</artifactId>
             <version>1.1.0.0-RC2</version>
         </dependency>
 
-        <!-- Source: https://mvnrepository.com/artifact/org.springframework.ai/spring-ai-markdown-document-reader -->
         <dependency>
             <groupId>org.springframework.ai</groupId>
             <artifactId>spring-ai-markdown-document-reader</artifactId>
-            <version>2.0.0-M1</version>
-            <scope>compile</scope>
         </dependency>
         <!--      手动整合-->
         <dependency>
@@ -153,7 +170,6 @@
         <dependency>
             <groupId>org.springframework.ai</groupId>
             <artifactId>spring-ai-pgvector-store</artifactId>
-            <version>2.0.0-M1</version>
         </dependency>
 
         <!--        自动整合-->
@@ -163,18 +179,13 @@
         <!--            <version>1.0.0-M7</version>-->
         <!--        </dependency>-->
 
-        <!-- Source: https://mvnrepository.com/artifact/org.springframework.ai/spring-ai-advisors-vector-store -->
         <dependency>
             <groupId>org.springframework.ai</groupId>
             <artifactId>spring-ai-advisors-vector-store</artifactId>
-            <version>1.1.2</version>
-            <scope>compile</scope>
         </dependency>
         <dependency>
             <groupId>org.springframework.ai</groupId>
             <artifactId>spring-ai-commons</artifactId>
-            <version>2.0.0-M2</version>
-            <scope>compile</scope>
         </dependency>
 
     </dependencies>
