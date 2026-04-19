@@ -88,7 +88,7 @@
               :class="{ 'send-button-active': inputMessage.trim() }"
               title="发送 (Enter)"
           >
-            <img src="/向上.png" alt="发送" class="send-icon" />
+            <img src="/arrow-up.png" alt="发送" class="send-icon" />
           </button>
         </div>
       </div>

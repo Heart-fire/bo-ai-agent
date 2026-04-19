@@ -41,7 +41,7 @@
       <div class="header-inner">
         <div class="brand">
           <div class="brand-icon">
-            <img src="/政策指南针.png" width="27" height="27" alt="政策通" />
+            <img src="/logo.png" width="27" height="27" alt="政策通" />
           </div>
           <span class="brand-name">政策通</span>
         </div>
@@ -88,17 +88,17 @@
           <!-- 搜索框底部工具栏 -->
           <div class="search-toolbar">
             <div class="mode-btns">
-              <!-- 政策问答模式 -->
-              <button
-                class="mode-btn"
-                :class="{ 'mode-qa-active': selectedMode === 'qa' }"
-                @click="toggleMode('qa')"
-              >
-                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                  <path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/>
-                </svg>
-                政策问答
-              </button>
+              <!-- 政策问答模式按钮删除，默认问答即政策问答模式-->
+<!--              <button-->
+<!--                class="mode-btn"-->
+<!--                :class="{ 'mode-qa-active': selectedMode === 'qa' }"-->
+<!--                @click="toggleMode('qa')"-->
+<!--              >-->
+<!--                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">-->
+<!--                  <path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/>-->
+<!--                </svg>-->
+<!--                政策问答-->
+<!--              </button>-->
               <!-- 深度分析模式 -->
               <button
                 class="mode-btn"
@@ -147,7 +147,7 @@
                 :disabled="!inputValue.trim()"
                 @click="handleSend"
               >
-                <img src="@/assets/025-发送.png" width="18" height="18" alt="发送" />
+                <img src="@/assets/home-send.png" width="18" height="18" alt="发送" />
               </button>
             </div>
           </div>
@@ -246,6 +246,33 @@
 
     </main>
 
+    <!-- 右侧悬浮栏 -->
+    <div class="side-float">
+      <!-- 微信：点击弹出二维码 -->
+      <div class="side-float-item" @mouseleave="showWechat = false">
+        <button class="side-float-btn" @click="showWechat = !showWechat">
+          <img src="@/assets/WeChat.png" width="18" height="18" alt="站长联系方式" />
+        </button>
+        <transition name="side-card">
+          <div v-if="showWechat" class="side-float-card">
+            <p class="side-card-title">站长联系</p>
+            <div class="side-card-qr">
+              <!-- 将微信二维码图片放到 public/wechat-qr.png -->
+              <img :src="wechatQr" alt="微信二维码" />
+            </div>
+            <p class="side-card-tip">长按保存，扫码添加微信</p>
+          </div>
+        </transition>
+      </div>
+
+      <!-- GitHub：点击直接跳转 -->
+      <a class="side-float-btn" href="https://github.com/Heart-fire" target="_blank" rel="noopener noreferrer">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
+          <path d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0 0 24 12c0-6.63-5.37-12-12-12z"/>
+        </svg>
+      </a>
+    </div>
+
     <!-- 页脚 -->
     <footer class="site-footer">
       © 2026 政策通 · AI 政策咨询平台 · 仅供参考，具体以官方文件为准
@@ -269,12 +296,12 @@ useHead({
 const router = useRouter()
 
 const EXAMPLE_QUESTIONS = [
+  '2026年，北京将会有哪些新变化？',
   '个人所得税起征点是多少？',
-  '小微企业有哪些税收优惠政策？',
+  '用户办理进京证过程中是否可以取消？？',
   '新能源汽车补贴政策最新规定？',
-  '社保缴纳比例是多少？',
-  '灵活就业人员如何缴纳社保？',
-  '创业担保贷款怎么申请？',
+  '怎么下载个人的社保缴费单？',
+  '非本市户籍适龄儿童少年如何入学？',
 ]
 
 const FEATURES = [
@@ -296,6 +323,8 @@ const MODEL_OPTIONS = [
 ]
 const selectedModel = ref('dashscope')
 const showModelDropdown = ref(false)
+const showWechat = ref(false)
+const wechatQr = '/wechat-qr.png'
 
 const toggleModelDropdown = () => {
   showModelDropdown.value = !showModelDropdown.value
@@ -1094,6 +1123,107 @@ const handleSend = () => {
 }
 
 /* ============================================================
+   右侧悬浮栏
+   ============================================================ */
+.side-float {
+  position: fixed;
+  right: 20px;
+  top: 50%;
+  transform: translateY(-50%);
+  z-index: 999;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.side-float-item {
+  position: relative;
+}
+
+.side-float-btn {
+  width: 42px;
+  height: 42px;
+  border-radius: 12px;
+  border: 1px solid #e2e8f0;
+  background: #fff;
+  color: #64748b;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+}
+
+.side-float-btn:hover {
+  color: #dc2626;
+  border-color: #fecaca;
+  background: #fef2f2;
+  transform: scale(1.06);
+  box-shadow: 0 4px 14px rgba(220, 38, 38, 0.12);
+}
+
+/* 二维码弹出卡片 */
+.side-float-card {
+  position: absolute;
+  right: 54px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 200px;
+  background: #fff;
+  border: 1px solid #e2e8f0;
+  border-radius: 16px;
+  padding: 16px;
+  text-align: center;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.10);
+  cursor: default;
+}
+
+.side-card-title {
+  font-size: 13px;
+  font-weight: 600;
+  color: #0f172a;
+  margin: 0 0 10px;
+}
+
+.side-card-qr {
+  width: 100%;
+  aspect-ratio: 1;
+  border-radius: 10px;
+  overflow: hidden;
+  background: #f8fafc;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.side-card-qr img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+
+.side-card-tip {
+  font-size: 11px;
+  color: #94a3b8;
+  margin: 8px 0 0;
+}
+
+/* 卡片过渡动画 */
+.side-card-enter-active { transition: all 0.2s ease-out; }
+.side-card-leave-active { transition: all 0.15s ease-in; }
+.side-card-enter-from,
+.side-card-leave-to {
+  opacity: 0;
+  transform: translateY(-50%) translateX(8px);
+}
+.side-card-enter-to,
+.side-card-leave-from {
+  opacity: 1;
+  transform: translateY(-50%) translateX(0);
+}
+
+/* ============================================================
    页脚
    ============================================================ */
 .site-footer {
@@ -1109,9 +1239,10 @@ const handleSend = () => {
    响应式
    ============================================================ */
 @media (max-width: 640px) {
+  .side-float { display: none; }
   .header-inner { padding: 16px; }
   .site-nav { gap: 16px; }
-  .nav-link { display: none; }
+  .nav-link { font-size: 13px; }
   .hero-main { padding: 32px 12px 40px; }
   .hero-badge { margin-bottom: 24px; }
   .hero-subtitle { font-size: 0.95rem; margin-bottom: 28px; }

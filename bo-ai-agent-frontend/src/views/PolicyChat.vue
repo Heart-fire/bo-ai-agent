@@ -11,7 +11,7 @@
     <header class="top-bar">
       <div class="top-bar-left">
         <div class="brand-icon">
-          <img src="/政策指南针.png" width="25" height="25" alt="政策通" />
+          <img src="/logo.png" width="25" height="25" alt="政策通" />
         </div>
         <span class="brand-name">政策通</span>
         <span class="divider">/</span>
@@ -56,7 +56,7 @@
           <div v-if="msg.isUser" class="row-user">
             <div class="user-bubble">{{ msg.content }}</div>
             <div class="user-avatar">
-              <img src="@/assets/Chat用户.png" width="15" height="15" alt="用户" />
+              <img src="@/assets/chat-user.png" width="15" height="15" alt="用户" />
             </div>
           </div>
 
@@ -109,7 +109,7 @@
 
     <!-- 滚动到底部按钮 -->
     <button v-if="showScrollDown" class="scroll-down-btn" @click="scrollToBottom">
-      <img src="@/assets/025-发送.png" width="18" height="18" alt="发送" />
+      <img src="@/assets/home-send.png" width="18" height="18" alt="发送" />
     </button>
 
     <!-- 输入区域 -->
@@ -162,7 +162,7 @@
               @click="sendMessage"
               :disabled="!inputMessage.trim()"
             >
-              <img src="@/assets/Chat发送.png" width="18" height="18" alt="发送" />
+              <img src="@/assets/chat-send.png" width="18" height="18" alt="发送" />
             </button>
           </div>
         </div>
