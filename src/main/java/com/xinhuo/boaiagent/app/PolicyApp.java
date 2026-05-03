@@ -2,7 +2,6 @@ package com.xinhuo.boaiagent.app;
 
 import com.xinhuo.boaiagent.advisor.MyLoggerAvisor;
 import com.xinhuo.boaiagent.advisor.ReReadingAdvisor;
-import com.xinhuo.boaiagent.chatMemory.PgRedisChatMemory;
 import com.xinhuo.boaiagent.rag.PolicyRagCustomAdvisorFactory;
 import com.xinhuo.boaiagent.rag.QueryRewriter;
 import jakarta.annotation.Resource;
@@ -10,14 +9,11 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.ai.chat.client.ChatClient;
 import org.springframework.ai.chat.client.advisor.MessageChatMemoryAdvisor;
 import org.springframework.ai.chat.client.advisor.api.Advisor;
-import org.springframework.ai.chat.client.advisor.vectorstore.QuestionAnswerAdvisor;
 import org.springframework.ai.chat.memory.ChatMemory;
 import org.springframework.ai.chat.model.ChatModel;
 import org.springframework.ai.chat.model.ChatResponse;
 import org.springframework.ai.tool.ToolCallback;
 import org.springframework.ai.tool.ToolCallbackProvider;
-import org.springframework.ai.document.Document;
-import org.springframework.ai.vectorstore.SearchRequest;
 import org.springframework.ai.vectorstore.VectorStore;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.stereotype.Component;
@@ -35,7 +31,7 @@ public class PolicyApp {
 
     private final ChatClient chatClient;
 
-    private final PgRedisChatMemory pgRedisChatMemory;
+    private final ChatMemory chatMemory;
 
     private static final String SYSTEM_PROMPT = """
             你是一名专业的北京市政策法规咨询顾问，具备丰富的政务知识，熟悉北京市各类民生政策。
@@ -63,19 +59,12 @@ public class PolicyApp {
             - 不得提供法律诉讼建议，需要时引导用户咨询专业律师。
             """;
 
-    // 云知识库 Advisor（DashScope 云端，暂未配好）
-    @Resource
-    private Advisor policyRagCloudAdvisor;
-
-    @Resource
-    private QueryRewriter queryRewriter;
-
-    // 本地向量库（SimpleVectorStore，文档已加载）
+    // 本地知识库
     @Resource
     private VectorStore policyVectorStore;
 
     @Resource
-    private VectorStore pgVectorVectorStore;
+    private QueryRewriter queryRewriter;
 
     @Resource
     private ToolCallback[] toolCallbacks;
@@ -90,15 +79,15 @@ public class PolicyApp {
         return ChatClient.builder(chatModel)
                 .defaultSystem(SYSTEM_PROMPT)
                 .defaultAdvisors(
-                        MessageChatMemoryAdvisor.builder(pgRedisChatMemory).build(),
+                        MessageChatMemoryAdvisor.builder(chatMemory).build(),
                         new ReReadingAdvisor()
                 )
                 .build();
     }
 
     public PolicyApp(@Qualifier("dashScopeChatModel") ChatModel dashscopeChatModel,
-                     PgRedisChatMemory pgRedisChatMemory) {
-        this.pgRedisChatMemory = pgRedisChatMemory;
+                     ChatMemory chatMemory) {
+        this.chatMemory = chatMemory;
         this.chatClient = buildChatClient(dashscopeChatModel);
     }
 
@@ -115,7 +104,8 @@ public class PolicyApp {
                 .user(rewrittenMessage)
                 .user(message)
                 .advisors(spec -> spec.param(ChatMemory.CONVERSATION_ID, chatId))
-                .advisors(QuestionAnswerAdvisor.builder(policyVectorStore).build())
+                // 使用本地向量知识库检索
+                .advisors(PolicyRagCustomAdvisorFactory.createPolicyRagAdvisorWithoutFilter(policyVectorStore))
                 .stream()
                 .content();
     }
@@ -159,7 +149,7 @@ public class PolicyApp {
                 .advisors(spec -> spec.param(ChatMemory.CONVERSATION_ID, chatId))
                 .advisors(new MyLoggerAvisor())
                 // 使用自定义 RAG（无分类过滤，全库检索 + 相似度阈值 0.6）
-                .advisors(PolicyRagCustomAdvisorFactory.createPolicyRagAdvisorWithoutFilter(pgVectorVectorStore))
+                .advisors(PolicyRagCustomAdvisorFactory.createPolicyRagAdvisorWithoutFilter(policyVectorStore))
                 .toolCallbacks(toolCallbacks)
                 .call()
                 .chatResponse();

@@ -21,9 +21,9 @@ class MyTokenTextSplitter {
     // 自定义的 TokenTextSplitter
     public List<Document> splitCustomized(List<Document> documents) {
         TokenTextSplitter splitter = TokenTextSplitter.builder()
-                .withChunkSize(200)
-                .withMinChunkSizeChars(100)
-                .withMinChunkLengthToEmbed(10)
+                .withChunkSize(300)
+                .withMinChunkSizeChars(50)
+                .withMinChunkLengthToEmbed(50)
                 .withMaxNumChunks(5000)
                 .withKeepSeparator(true)
                 .build();

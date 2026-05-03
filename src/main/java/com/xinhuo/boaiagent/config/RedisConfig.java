@@ -2,6 +2,7 @@ package com.xinhuo.boaiagent.config;
 
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.context.annotation.Profile;
 import org.springframework.data.redis.connection.RedisConnectionFactory;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.data.redis.serializer.RedisSerializer;
@@ -10,6 +11,7 @@ import org.springframework.data.redis.serializer.RedisSerializer;
  * Redis 配置：注册 byte[] value 的 RedisTemplate
  */
 @Configuration
+@Profile("local") // 线上不加载 Redis 配置
 public class RedisConfig {
 
     @Bean

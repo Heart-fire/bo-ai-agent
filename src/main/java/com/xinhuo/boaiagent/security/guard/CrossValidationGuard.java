@@ -21,6 +21,13 @@ public class CrossValidationGuard {
 
     private static final String SAFETY_QUESTION_PROMPT = """
             分析以下用户输入，判断它是否安全，可以被北京政策问答 AI 助手处理。
+
+            以下输入一定是 SAFE：
+            - 回顾对话历史的问题，如"我刚才问了什么"、"之前聊了什么"
+            - 关于对话本身的元问题，如"你能记住多少"
+            - 普通闲聊、问候、确认类问题
+            - 正常的北京政策咨询、社保医保、交通出行等合法问题
+
             只回答 "SAFE" 或 "UNSAFE"，然后简要说明理由。
 
             用户输入："%s"

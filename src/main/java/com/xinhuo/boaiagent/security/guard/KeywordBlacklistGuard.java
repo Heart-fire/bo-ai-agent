@@ -37,7 +37,7 @@ public class KeywordBlacklistGuard {
                 log.warn("关键字黑名单触发: pattern={}, input={}",
                         pattern.pattern(), truncate(input, 100));
                 return ThreatReport.builder()
-                        .threatLevel(ThreatLevel.MALICIOUS)
+                        .threatLevel(ThreatLevel.MALICIOUS) // 正则校验通过，直接赋值为恶意
                         .guardName(GUARD_NAME)
                         .reason("输入匹配到黑名单模式: " + pattern.pattern())
                         .originalInput(input)

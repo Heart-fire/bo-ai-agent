@@ -14,6 +14,7 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 /**
  * 抽象基础代理类，用于管理代理状态和执行流程。
@@ -93,13 +94,19 @@ public abstract class BaseAgent {
      * 运行代理（流式输出）
      *
      * @param userPrompt 用户提示词
-     * @return 执行结果
+     * @return SseEmitter
      */
     public SseEmitter runStream(String userPrompt) {
-        // 不设超时（0=无限），由服务端任务完成后主动关闭连接
-        SseEmitter sseEmitter = new SseEmitter(0L);
-        // 异步处理
-        CompletableFuture.runAsync(() -> {
+        // 5 分钟超时（Agent 多步工具调用，耗时长于普通问答）
+        SseEmitter sseEmitter = new SseEmitter(300_000L);
+
+        // 取消标志：客户端断开/超时时设为 true，for 循环每步检查
+        AtomicBoolean cancelled = new AtomicBoolean(false);
+        // 清理标志：保证 cleanup() 只执行一次（finally / onTimeout / onCompletion 可能并发）
+        AtomicBoolean cleaned = new AtomicBoolean(false);
+
+        // 保存 Future 引用，用于从回调中取消异步任务
+        CompletableFuture<Void> agentFuture = CompletableFuture.runAsync(() -> {
             // 1、基础校验
             try {
                 if (this.state != AgentState.IDLE) {
@@ -124,14 +131,20 @@ public abstract class BaseAgent {
             List<String> results = new ArrayList<>();
             try {
 
-                // 执行循环
-                for (int i = 0; i < maxSteps && state != AgentState.FINISHED; i++) {
+                // 执行循环：每步检查 cancelled 标志，客户端断开后不再执行下一步
+                for (int i = 0; i < maxSteps && state != AgentState.FINISHED && !cancelled.get(); i++) {
                     int stepNumber = i + 1;
                     currentStep = stepNumber;
                     log.info("执行步骤： {}/{}", stepNumber, maxSteps);
                     // 流式单步执行，内部已实时推送 SSE 事件
                     String stepResult = stepStream(sseEmitter);
                     results.add(stepResult);
+                }
+
+                // 客户端已断开，跳过后续总结
+                if (cancelled.get()) {
+                    log.warn("客户端已断开，跳过总结生成");
+                    return;
                 }
 
                 // 检查是否超出步骤限制
@@ -177,26 +190,49 @@ public abstract class BaseAgent {
                     sseEmitter.completeWithError(ex);
                 }
             } finally {
-                // 3、清理资源
-                this.cleanup();
+                safeCleanup(cleaned);
             }
         });
 
-        // 设置超时回调
+        // 超时回调：5 分钟超时触发
         sseEmitter.onTimeout(() -> {
+            log.warn("SSE 连接超时, agent={}", name);
+            cancelled.set(true);
             this.state = AgentState.ERROR;
-            this.cleanup();
-            log.warn("SSE connection timeout");
+            agentFuture.cancel(true);
+            safeCleanup(cleaned);
         });
-        // 设置完成回调
+
+        // 客户端主动断开回调（关浏览器、杀进程、网络断开）
+        sseEmitter.onError(throwable -> {
+            log.warn("SSE 连接异常断开, agent={}: {}", name, throwable.getMessage());
+            cancelled.set(true);
+            this.state = AgentState.ERROR;
+            agentFuture.cancel(true);
+            safeCleanup(cleaned);
+        });
+
+        // 完成回调（无论正常/异常最终都会触发，兜底清理）
         sseEmitter.onCompletion(() -> {
+            log.info("SSE 连接关闭, agent={}", name);
+            cancelled.set(true);
             if (this.state == AgentState.RUNNING) {
                 this.state = AgentState.FINISHED;
             }
-            this.cleanup();
-            log.info("SSE connection completed");
+            agentFuture.cancel(true);
+            safeCleanup(cleaned);
         });
+
         return sseEmitter;
+    }
+
+    /**
+     * 安全执行清理，保证 cleanup() 只调用一次
+     */
+    private void safeCleanup(AtomicBoolean cleaned) {
+        if (cleaned.compareAndSet(false, true)) {
+            this.cleanup();
+        }
     }
 
     /**

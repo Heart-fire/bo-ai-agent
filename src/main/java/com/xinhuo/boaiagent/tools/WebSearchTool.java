@@ -33,7 +33,7 @@ public class WebSearchTool {
      */
     @Tool(description = "Web search, searching for information on the Internet")
     public String webSearch(@ToolParam(description = "Search keywords") String searchQuery) {
-        return webSearchAdvanced(searchQuery, 5, null, null);
+        return webSearchAdvanced(searchQuery, 1, null, null);
     }
 
 
@@ -73,8 +73,8 @@ public class WebSearchTool {
 
             BigModelWebSearchResponse response = JSONUtil.toBean(responseBody, BigModelWebSearchResponse.class);
 
-            // 格式化输出搜索结果
-            return JSONUtil.toJsonStr(formatSearchResult(response, count));
+            // 格式化输出搜索结果，强制只返回发布时间最新的 1 条
+            return JSONUtil.toJsonStr(formatSearchResult(response));
 
         } catch (Exception e) {
             log.error("网页搜索失败", e);
@@ -86,7 +86,7 @@ public class WebSearchTool {
     /**
      * 格式化搜索结果（简洁格式，用于 LLM 总结）
      */
-    private List<SearchResult> formatSearchResult(BigModelWebSearchResponse response, Integer count) {
+    private List<SearchResult> formatSearchResult(BigModelWebSearchResponse response) {
         if (response == null || response.getSearch_result() == null) {
             return Collections.emptyList();
         }
@@ -102,7 +102,7 @@ public class WebSearchTool {
             return d2.compareTo(d1);
         });
 
-        int limit = Math.min(count != null ? count : 5, results.size());
+        int limit = Math.min(1, results.size());
 
         List<SearchResult> list = new ArrayList<>();
 

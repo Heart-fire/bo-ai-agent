@@ -17,6 +17,7 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
+import reactor.core.Disposable;
 
 import java.io.IOException;
 import java.net.URLEncoder;
@@ -25,6 +26,8 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.Map;
 import java.util.UUID;
+import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicReference;
 
 /**
  * AI 接口控制器
@@ -88,19 +91,55 @@ public class PolicyController {
 
         ChatModel selectedModel = resolveModel(model);
 
-        // 支持动态切换模型
-        policyApp.doChatByStream(message, chatId, selectedModel)
+        // 用于保证 Subscription 只取消一次（onTimeout / onError / onCompletion 可能并发触发）
+        AtomicBoolean disposed = new AtomicBoolean(false);
+        // AtomicReference 打破 lambda 与 subscribe 返回值的循环依赖
+        AtomicReference<Disposable> subscriptionRef = new AtomicReference<>();
+
+        // 订阅 Flux 流，subscribe() 返回后将 Disposable 存入 ref
+        String finalChatId3 = chatId;
+        Disposable subscription = policyApp.doChatByStream(message, chatId, selectedModel)
                 .subscribe(
                         chunk -> {
                             try {
                                 sseEmitter.send(chunk);
-                            } catch (IOException e) {
-                                sseEmitter.completeWithError(e);
+                            } catch (IOException | IllegalStateException e) {
+                                // 客户端已断开，取消订阅，停止消费 Flux
+                                cancelSubscription(subscriptionRef.get(), disposed);
                             }
                         },
-                        sseEmitter::completeWithError,
-                        sseEmitter::complete
+                        error -> {
+                            log.error("Flux 流异常终止: {}", error.getMessage());
+                            sseEmitter.completeWithError(error);
+                        },
+                        () -> {
+                            log.debug("Flux 流正常完成, chatId={}", finalChatId3);
+                            sseEmitter.complete();
+                        }
                 );
+        subscriptionRef.set(subscription);
+
+        // 超时回调：3 分钟超时触发，取消订阅
+        String finalChatId = chatId;
+        sseEmitter.onTimeout(() -> {
+            log.warn("SSE 连接超时, chatId={}", finalChatId);
+            cancelSubscription(subscriptionRef.get(), disposed);
+        });
+
+        // 客户端主动断开回调
+        String finalChatId1 = chatId;
+        sseEmitter.onError(throwable -> {
+            log.warn("SSE 连接异常断开, chatId={}: {}", finalChatId1, throwable.getMessage());
+            cancelSubscription(subscriptionRef.get(), disposed);
+        });
+
+        // 完成回调（无论正常/异常最终都会触发，兜底清理）
+        String finalChatId2 = chatId;
+        sseEmitter.onCompletion(() -> {
+            log.debug("SSE 连接关闭, chatId={}", finalChatId2);
+            cancelSubscription(subscriptionRef.get(), disposed);
+        });
+
         return sseEmitter;
     }
 
@@ -207,6 +246,17 @@ public class PolicyController {
         } catch (IOException e) {
             log.warn("Failed to send block message via SSE", e);
             sseEmitter.completeWithError(e);
+        }
+    }
+
+    /**
+     * 安全取消 Flux 订阅，保证只取消一次
+     */
+    private void cancelSubscription(Disposable subscription, AtomicBoolean disposed) {
+        if (subscription == null) return;
+        if (disposed.compareAndSet(false, true) && !subscription.isDisposed()) {
+            subscription.dispose();
+            log.debug("Flux 订阅已取消");
         }
     }
 }

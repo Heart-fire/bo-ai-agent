@@ -14,7 +14,6 @@ import org.springframework.ai.chat.messages.SystemMessage;
 import org.springframework.ai.chat.messages.UserMessage;
 import org.springframework.context.annotation.Primary;
 import org.springframework.context.annotation.Profile;
-import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.stereotype.Component;
 
 import java.io.ByteArrayInputStream;
@@ -23,27 +22,20 @@ import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
-import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 
 /**
- * 基于 PostgreSQL + Redis + Kryo 的高性能对话记忆持久化方案
- * 写入：Redis 缓存 + PostgreSQL 持久化（同步双写）
- * 读取：先查 Redis，miss 则查 PostgreSQL 并回填 Redis
- * 删除：Redis + PostgreSQL 双删
+ * 纯 PostgreSQL 对话记忆持久化（线上环境使用，不依赖 Redis）
+ * 写入/读取/删除：直接操作 PostgreSQL
  */
 @Component
 @Primary
-@Profile("local")
+@Profile("prod")
 @Slf4j
 @RequiredArgsConstructor
-public class PgRedisChatMemory implements ChatMemory {
+public class PgChatMemory implements ChatMemory {
 
     private final ChatMemoryMapper chatMemoryMapper;
-    private final RedisTemplate<String, byte[]> redisTemplate;
-
-    private static final String REDIS_KEY_PREFIX = "chat:memory:";
-    private static final long REDIS_TTL_HOURS = 24;
 
     private static final Pool<Kryo> kryoPool = new Pool<>(true, false, 16) {
         @Override
@@ -70,18 +62,10 @@ public class PgRedisChatMemory implements ChatMemory {
 
     @Override
     public void add(String conversationId, List<Message> messages) {
-        // 先获取已有消息，再追加新消息
         List<Message> allMessages = get(conversationId);
         allMessages.addAll(messages);
 
-        // Kryo 序列化
         byte[] data = serialize(allMessages);
-
-        // 写 Redis 缓存-存 byte[]
-        String redisKey = REDIS_KEY_PREFIX + conversationId;
-        redisTemplate.opsForValue().set(redisKey, data, REDIS_TTL_HOURS, TimeUnit.HOURS);
-
-        // 写 PostgreSQL 持久化（upsert）
         String messageText = toReadableText(allMessages);
         saveToPg(conversationId, data, allMessages.size(), messageText);
 
@@ -90,39 +74,18 @@ public class PgRedisChatMemory implements ChatMemory {
 
     @Override
     public List<Message> get(String conversationId) {
-        // 查 Redis
-        String redisKey = REDIS_KEY_PREFIX + conversationId;
-        byte[] cached = redisTemplate.opsForValue().get(redisKey);
-        if (cached != null) {
-            List<Message> messages = deserialize(cached);
-            log.debug("Redis 缓存命中: conversationId={}, 消息数={}", conversationId, messages.size());
-            return messages;
-        }
-
-        // Redis miss，查 PostgreSQL
         ChatMemoryEntity entity = chatMemoryMapper.selectById(conversationId);
         if (entity != null && entity.getMessages() != null) {
             List<Message> messages = deserialize(entity.getMessages());
-
-            // 回填 Redis
-            redisTemplate.opsForValue().set(redisKey, entity.getMessages(), REDIS_TTL_HOURS, TimeUnit.HOURS);
-
-            log.debug("PostgreSQL 回填 Redis: conversationId={}, 消息数={}", conversationId, messages.size());
+            log.debug("PostgreSQL 命中: conversationId={}, 消息数={}", conversationId, messages.size());
             return messages;
         }
-
-        // 全新对话
         return new ArrayList<>();
     }
 
     @Override
     public void clear(String conversationId) {
-        // 删 Redis
-        redisTemplate.delete(REDIS_KEY_PREFIX + conversationId);
-
-        // 删 PostgreSQL
         chatMemoryMapper.deleteById(conversationId);
-
         log.debug("对话记忆已清除: conversationId={}", conversationId);
     }
 

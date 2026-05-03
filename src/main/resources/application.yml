@@ -2,9 +2,8 @@ spring:
   application:
     name: bo-ai-agent
   profiles:
+    # 默认使用 local 配置，使用者复制项目后只需要配置 application-local.yml 或环境变量。
     active: local
-#    数据库配置 ***********
-#    Redis配置 **********
   ai:
     vectorstore:
       pgvector:
@@ -12,13 +11,15 @@ spring:
         index-type: HNSW
         dimensions: 1536
         distance-type: COSINE_DISTANCE
-        max-document-batch-size: 10000 # 可选：每批文件的最大数量
+        max-document-batch-size: 10000
+
 server:
-    port: 8123
-    address: 0.0.0.0
-    servlet:
-      context-path: /api
-# springdoc-openapi 接口文档
+  port: 8123
+  address: 0.0.0.0
+  servlet:
+    context-path: /api
+
+# OpenAPI / Swagger UI
 springdoc:
   swagger-ui:
     path: /swagger-ui.html
@@ -27,48 +28,49 @@ springdoc:
   api-docs:
     path: /v3/api-docs
   group-configs:
-    - group: 'default'
-      paths-to-match: '/**'
+    - group: default
+      paths-to-match: /**
       packages-to-scan: com.xinhuo.boaiagent.controller
-# knife4j 增强配置， 不增强可不配
+
+# Knife4j 增强配置
 knife4j:
   enable: true
   setting:
     language: zh_cn
 
-# ==================== 安全防护配置 ====================
+# 安全防护配置
 security:
   guard:
-    enabled: true  # 总开关，设为 false 禁用所有安全层
+    enabled: true
     keyword:
       enabled: true
       patterns:
-        # 英文注入模式
-        - "(?i)ignore\\s+(previous|all|above)\\s+(instructions?|prompts?|rules?)"
-        - "(?i)system\\s*prompt"
-        - "(?i)you\\s+are\\s+now"
-        - "(?i)forget\\s+(everything|all|previous)"
-        - "(?i)disregard\\s+(your|all|previous)\\s+(instructions?|rules?)"
-        - "(?i)new\\s+instructions?\\s*[:：]"
-        - "(?i)jailbreak"
-        - "(?i)prompt\\s*injection"
-        - "(?i)DAN\\s+mode"
-        - "(?i)reveal\\s+(your|the|system)\\s+(prompt|instructions?|rules?)"
-        - "(?i)override\\s+(safety|security|filter|restriction)"
-        - "(?i)pretend\\s+(you\\s+are|to\\s+be)\\s+"
-        - "(?i)act\\s+as\\s+if\\s+you\\s+(are|were)\\s+not"
-        - "(?i)developer\\s+mode"
-        - "(?i)bypass\\s+(all\\s+)?restrictions?"
-        # 中文注入模式
-        - "(?i)忽略.*之前的?(指令|提示|规则)"
-        - "(?i)系统提示词"
-        - "(?i)忘记.*(所有|之前的)(指令|规则)"
-        - "(?i)你现在是"
-        - "(?i)绕过.*安全"
-        - "(?i)假装你是"
+        # 英文提示词注入模式
+        - '(?i)ignore\s+(previous|all|above)\s+(instructions?|prompts?|rules?)'
+        - '(?i)system\s*prompt'
+        - '(?i)you\s+are\s+now'
+        - '(?i)forget\s+(everything|all|previous)'
+        - '(?i)disregard\s+(your|all|previous)\s+(instructions?|rules?)'
+        - '(?i)new\s+instructions?\s*[:：]'
+        - '(?i)jailbreak'
+        - '(?i)prompt\s*injection'
+        - '(?i)DAN\s+mode'
+        - '(?i)reveal\s+(your|the|system)\s+(prompt|instructions?|rules?)'
+        - '(?i)override\s+(safety|security|filter|restriction)'
+        - '(?i)pretend\s+(you\s+are|to\s+be)\s+'
+        - '(?i)act\s+as\s+if\s+you\s+(are|were)\s+not'
+        - '(?i)developer\s+mode'
+        - '(?i)bypass\s+(all\s+)?restrictions?'
+        # 中文提示词注入模式
+        - '(?i)忽略.*之前的?(指令|提示|规则)'
+        - '(?i)系统提示词'
+        - '(?i)忘记.*(所有|之前的).*(指令|规则)'
+        - '(?i)你现在是'
+        - '(?i)绕过.*安全'
+        - '(?i)假装你是'
     intent:
       enabled: true
-      threshold: 0.7  # 置信度阈值，>= threshold 判定为恶意
+      threshold: 0.7
     cross-validation:
       enabled: true
-      timeout-seconds: 30  # 单个模型超时时间
+      timeout-seconds: 30
